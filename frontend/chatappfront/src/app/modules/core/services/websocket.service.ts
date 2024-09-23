@@ -31,6 +31,18 @@ export class WebsocketService {
     };
   }
 
+  // Modified send method with readyState check
+  send(message: string) {
+  // Check if the WebSocket connection is open
+  if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({
+      'message': message
+    }));
+  } else {
+    console.error('WebSocket connection is not open. Ready state:', this.socket.readyState);
+  }
+}
+
   // close the connection if its open
   disconnect() {
     if (this.socket) {
