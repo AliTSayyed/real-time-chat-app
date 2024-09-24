@@ -26,6 +26,10 @@
         <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
         <p>Oh yeah, did Michael Jordan tell you that?</p>
       </li>
+      <li class="replies" *ngFor="let msg of messages">
+        <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
+        <p>{{msg}}</p>
+      </li>
     </ul>
   </div>
   <div class="message-input">

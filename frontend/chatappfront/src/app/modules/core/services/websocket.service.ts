@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -6,6 +7,8 @@ import { Injectable } from '@angular/core';
 export class WebsocketService {
 
   private socket!: WebSocket;
+  private messageSubject = new Subject<string>(); // subject used to broadcast messages to chat components, allows multiple observers to receive the same values. Its a list that stores observables of type string. 
+
   constructor() {}
 
   // Connect to the server's websocket 
@@ -14,10 +17,11 @@ export class WebsocketService {
 
     console.log('frontend to backend websocket established')
     
-    // check message that was sent
+    // check message that was sent to backend and then sent backto frontend
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log('Message sent', data.message)
+      console.log('Message sent from backend:', data.message)
+      this.messageSubject.next(data.message); // emmit message
     };
 
     // log error
@@ -41,6 +45,10 @@ export class WebsocketService {
   } else {
     console.error('WebSocket connection is not open. Ready state:', this.socket.readyState);
   }
+}
+
+getMessages(){
+  return this.messageSubject.asObservable(); // this is how to acess the messages from the websocket connection 
 }
 
   // close the connection if its open

@@ -11,8 +11,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket message recieve from client event
   async def receive(self, text_data):
-    print('recieved', text_data)
+    print('received')
+    data = json.loads(text_data) # reformat json from string to python dict
+  
+    msg = data['message']
+    if not msg:
+      return False
+    
+    response = {
+      'message': msg
+    }
+
+    # send the response in a json format
+    await self.send(text_data=json.dumps(response))
+
+
 
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
   async def disconnect(self, close_code):
-    print('disconnected')
+    print('disconnected', close_code)
