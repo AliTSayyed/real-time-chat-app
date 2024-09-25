@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { WebsocketService } from '../../core/services/websocket.service';
 import { Subscription } from 'rxjs';
 
@@ -8,6 +8,9 @@ import { Subscription } from 'rxjs';
   styleUrl: './chat.component.scss',
 })
 export class ChatComponent {
+  @Input() userID: string | null = null;
+  recipientID: string | null = null;
+
   message: string = '';
   messages: string[] = []; // list of messages to display in the thread
   private messageSubscription!: Subscription; // declares a class property in TypeScript that will hold a subscription to an RxJS observable
@@ -19,11 +22,13 @@ export class ChatComponent {
     this.messageSubscription = this.websocketService.getMessages().subscribe((msg: string) => {
       this.messages.push(msg);
     })
+   
   }
 
+  // when a user sends a message, need to send the message content, the user id who sent the message, and the id of the recipient
   sendMessage() {
     if (this.message !== '') {
-      this.websocketService.send(this.message);
+      this.websocketService.send(this.message, '1', '2');
     }
     this.message = '';
   }

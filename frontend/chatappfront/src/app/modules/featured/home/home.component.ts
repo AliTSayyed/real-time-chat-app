@@ -11,6 +11,7 @@ export class HomeComponent {
 
   isAuthenticated: boolean = false;
   username: string | null = null
+  userID: string | null = null
 
   constructor(private websocketService:WebsocketService, private authService: AuthService){}
 
@@ -21,6 +22,7 @@ export class HomeComponent {
       next: (response) => {
         this.isAuthenticated = response.is_authenticated;
         this.username = response.username;
+        this.userID = response.user_id;
       },
       error: (error) => {
         this.isAuthenticated = false;
