@@ -25,13 +25,14 @@ SECRET_KEY = 'pdg@qfl(s10^)me7qf_#t@26pa^49&hjmx^f774rm2w9a792yy'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
     'daphne',
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,18 +40,80 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
-    'chat'
+    'chat',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
+     'corsheaders.middleware.CorsMiddleware',  # Ensure this is first if using django-cors-headers
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',  # Handles session management
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Handles authentication (populates request.user)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# This allows credentials such as cookies to be included
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow Angular frontend URL
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:4200',
+    'http://127.0.0.1:4200'
+]
+
+CORS_ALLOW_METHODS = [
+    'GET',  # For reading resources (like authentication check)
+    'POST',  # For creating resources
+    'PUT',  # For updating resources
+    'PATCH',  # For partial updates
+    'DELETE',  # For deleting resources
+    'OPTIONS',  # Pre-flight request method (automatically sent by the browser)
+]
+
+CORS_ALLOW_HEADERS = [
+    'Authorization',  # Allow Authorization header for token-based auth (if used)
+    'content-type',   # Allow Content-Type for POST/PUT requests
+    'x-csrftoken',    # Allow CSRF token header for CSRF protection
+    'accept',         # Accept header for specifying response types
+    'origin',         # Origin header for cross-origin requests
+    'user-agent',     # User-Agent for client identification
+    'x-requested-with',  # Allows XMLHttpRequest (used by many JavaScript frameworks)
+    'cookie',         # Allow cookies (session management)
+]
+
+# Ensure SameSite is None for cross-origin cookies
+SESSION_COOKIE_SAMESITE = 'None'  # Allows the sessionid to be sent across domains
+
+
+CSRF_COOKIE_SAMESITE = 'None'  # Allows the csrftoken to be sent across domains
+
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:4200']  # Trust Angular's origin
+
+
+# Configure DRF to use JWT Authentication
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+# Import SimpleJWT settings
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 ROOT_URLCONF = 'chatapp.urls'
 

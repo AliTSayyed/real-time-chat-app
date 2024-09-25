@@ -1,4 +1,4 @@
-<div id="profile">
+<div *ngIf="username" id="profile">
   <div class="wrap">
     <img
       id="profile-img"
@@ -6,7 +6,7 @@
       class="online"
       alt=""
     />
-    <p>Mike Ross</p>
+    <p>{{username}}</p>
     <i class="fa fa-chevron-down expand-button"></i>
     <div id="status-options"></div>
   </div>

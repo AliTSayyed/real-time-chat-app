@@ -1,21 +1,19 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { ChatComponent } from './chat/chat.component';
 import { HomeComponent } from './home/home.component';
-import { ContactsComponent } from './contacts/contacts.component';
+import { LoginComponent } from './login/login.component';
+import { authGuard } from '../core/guards/auth.guard';
 
 const routes: Routes = [{
   path:'',
-  component: HomeComponent
+  component: HomeComponent,
+  canActivate: [authGuard]
 },
 {
-  path:'chat',
-  component: ChatComponent
+  path:'login',
+  component: LoginComponent
 },
-{
-  path:'contacts',
-  component: ContactsComponent
-}
+{ path: '**', redirectTo: '' },
 ];
 
 @NgModule({

@@ -6,15 +6,16 @@ import { ChatComponent } from './chat/chat.component';
 import { HomeComponent } from './home/home.component';
 import { ContactsComponent } from './contacts/contacts.component';
 import { ProfileComponent } from './profile/profile.component';
+import { LoginComponent } from "./login/login.component";
 
 
 
 @NgModule({
-  declarations: [HomeComponent, ChatComponent, ContactsComponent, ProfileComponent],
+  declarations: [HomeComponent, ChatComponent, ContactsComponent, ProfileComponent, LoginComponent],
   imports: [
     CommonModule,
     FeaturedRoutingModule,
-    FormsModule
-  ]
+    FormsModule,
+]
 })
 export class FeaturedModule { }
