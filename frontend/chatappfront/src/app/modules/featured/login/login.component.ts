@@ -10,10 +10,26 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class LoginComponent {
 
+  // switch between login and registration
+  isLoginMode: boolean = true;
+
   username = '';
   password = '';
 
   constructor(private authService: AuthService, private router: Router) {}
+
+  toggleMode(){
+    this.isLoginMode = !this.isLoginMode;
+  }
+
+  // Handle submitting a login or a register action
+  onSubmit(){
+    if (this.isLoginMode){
+      this.login();
+    } else {
+      this.register();
+    }
+  }
 
   login() {
     this.authService.login(this.username, this.password).subscribe({
@@ -28,6 +44,18 @@ export class LoginComponent {
         console.log('Login request completed');
       }
     });
+  }
+
+  register(){
+    this.authService.register(this.username, this.password).subscribe(
+      (response) => {
+        console.log('Registration successful');
+        this.isLoginMode = true // go back to login screen
+      },
+      (error) => {
+        console.error('Registration failed', error)
+      }
+    )
   }
 }
 

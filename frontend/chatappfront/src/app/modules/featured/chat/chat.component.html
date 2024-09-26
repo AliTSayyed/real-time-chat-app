@@ -25,9 +25,9 @@
         <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
         <p>Doing good</p>
       </li>
-      <li class="replies" *ngFor="let msg of messages">
+      <li [ngClass]="msg.sender_id !== userID ? 'replies' : 'sent'" *ngFor="let msg of messages">
         <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
-        <p>{{msg}}</p>
+        <p>{{msg.message}}</p>
       </li>
     </ul>
   </div>

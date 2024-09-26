@@ -56,13 +56,31 @@ export class AuthService {
     return localStorage.getItem('access_token');
   }
 
+  // Function to refresh the access token
   refreshToken(): Observable<any> {
-    const refresh = localStorage.getItem('refresh_token');
-    return this.http.post(`${this.apiUrl}/token/refresh/`, { refresh }).pipe(
-      tap((response: any) => {
-        localStorage.setItem('access_token', response.access);
-      })
-    );
-  }
+    const refreshToken = localStorage.getItem('refresh_token');  // Get refresh token
 
+    if (refreshToken) {
+      console.log('Refreshing access token using refresh token...');
+      return this.http.post(`${this.apiUrl}/token/refresh/`, {
+        refresh: refreshToken
+      }).pipe(
+        tap((response: any) => {
+          console.log('New access token received:', response.access);
+          localStorage.setItem('access_token', response.access);  // Store new access token
+
+          // Optionally, store new refresh token if token rotation is enabled
+          if (response.refresh) {
+            console.log('New refresh token received:', response.refresh);
+            localStorage.setItem('refresh_token', response.refresh);
+          }
+        })
+      );
+    } else {
+      console.error('No refresh token found');
+      return new Observable(observer => {
+        observer.error({ error: 'No refresh token found' });
+      });
+    }
+  }
 }

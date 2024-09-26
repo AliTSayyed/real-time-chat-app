@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
+import { ChatMessage } from '../../../../types';
 
 @Injectable({
   providedIn: 'root'
@@ -7,21 +8,22 @@ import { Subject } from 'rxjs';
 export class WebsocketService {
 
   private socket!: WebSocket;
-  private messageSubject = new Subject<string>(); // subject used to broadcast messages to chat components, allows multiple observers to receive the same values. Its a list that stores observables of type string. 
+  private token: string | null = null;
+  private messageSubject = new Subject<ChatMessage>(); // subject used to broadcast messages to chat components, allows multiple observers to receive the same values. Its a list that stores observables of type string. 
 
   constructor() {}
 
   // Connect to the server's websocket 
   connect() {
-    this.socket = new WebSocket(`ws:localhost:8000/ws/chat/`);
-
+    this.token = localStorage.getItem('access_token');  // Retrieve the JWT token from localStorage
+    this.socket = new WebSocket(`ws://localhost:8000/ws/chat/?token=${this.token}`);
     console.log('frontend to backend websocket established')
     
     // check message that was sent to backend and then sent backto frontend
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log('Message sent from backend:', data.message)
-      this.messageSubject.next(data.message); // emmit message
+      console.log('Message sent from backend:', data)
+      this.messageSubject.next(data); // emmit message
     };
 
     // log error
@@ -36,7 +38,7 @@ export class WebsocketService {
   }
 
   // Modified send method with readyState check
-  send(message: string, userID: string, recipientID: string) {
+  send(message: string, userID: number | null, recipientID: number | null) {
   // Check if the WebSocket connection is open
   if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({

@@ -12,8 +12,8 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+from chat.consumers import JWTAuthMiddleware
 import chat.routing
-from channels.sessions import SessionMiddlewareStack
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chatapp.settings')
 
 
@@ -23,7 +23,7 @@ django_asgi_app = get_asgi_application()
 # ASGI application definition with separate handlers for HTTP and WebSocket
 application = ProtocolTypeRouter({
     "http": django_asgi_app,  # Handles Django HTTP requests (like /admin)
-    "websocket": SessionMiddlewareStack(
+    "websocket": JWTAuthMiddleware(
       AuthMiddlewareStack(
         URLRouter(
             chat.routing.websocket_url_patterns  # Handles WebSocket connections
