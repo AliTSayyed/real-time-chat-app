@@ -5,26 +5,6 @@
   </div>
   <div class="messages">
     <ul>
-      <li class="sent">
-        <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
-        <p>
-          Hi
-        </p>
-      </li>
-      <li class="replies">
-        <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
-        <p>
-          Hello
-        </p>
-      </li>
-      <li class="replies">
-        <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
-        <p>How are you</p>
-      </li>
-      <li class="sent">
-        <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
-        <p>Doing good</p>
-      </li>
       <li [ngClass]="msg.sender_id !== userID ? 'replies' : 'sent'" *ngFor="let msg of messages">
         <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
         <p>{{msg.message}}</p>

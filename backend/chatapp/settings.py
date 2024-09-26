@@ -85,15 +85,7 @@ CORS_ALLOW_HEADERS = [
     'cookie',         # Allow cookies (session management)
 ]
 
-# Ensure SameSite is None for cross-origin cookies
-SESSION_COOKIE_SAMESITE = 'None'  # Allows the sessionid to be sent across domains
-
-
-CSRF_COOKIE_SAMESITE = 'None'  # Allows the csrftoken to be sent across domains
-
-
 CSRF_TRUSTED_ORIGINS = ['http://localhost:4200']  # Trust Angular's origin
-
 
 # Configure DRF to use JWT Authentication
 REST_FRAMEWORK = {
@@ -195,4 +187,4 @@ CHANNEL_LAYERS = {
   }
 }
   
-
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

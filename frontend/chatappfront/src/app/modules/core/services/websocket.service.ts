@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { ChatMessage } from '../../../../types';
+import { HttpClient } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,7 @@ export class WebsocketService {
   private token: string | null = null;
   private messageSubject = new Subject<ChatMessage>(); // subject used to broadcast messages to chat components, allows multiple observers to receive the same values. Its a list that stores observables of type string. 
 
-  constructor() {}
+  constructor(private http: HttpClient) {}
 
   // Connect to the server's websocket 
   connect() {
@@ -51,9 +52,16 @@ export class WebsocketService {
   }
 }
 
-getMessages(){
-  return this.messageSubject.asObservable(); // this is how to acess the messages from the websocket connection 
-}
+  // this is how to access the current messages from the websocket connection 
+  getMessages(){
+    return this.messageSubject.asObservable(); 
+  }
+
+  // Fetch previous messages for the thread (all messages, regardless of sender)
+  getPreviousMessages(recipientID: number): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`http://localhost:8000/api/threads/messages/${recipientID}`);
+  }
+
 
   // close the connection if its open
   disconnect() {

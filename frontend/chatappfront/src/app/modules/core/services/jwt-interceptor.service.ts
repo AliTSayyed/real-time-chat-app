@@ -1,59 +1,68 @@
 import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
-import { catchError, Observable, switchMap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, Observable, switchMap, throwError } from 'rxjs';
 import { AuthService} from './auth.service'; // Service for getting token
 
 @Injectable({
   providedIn: 'root'
 })
 export class JwtInterceptorService implements HttpInterceptor {
+  private isRefreshing = false;
+  private refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
 
   constructor(private authService: AuthService) {}
 
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const token = this.authService.getAccessToken();
 
-    // Add token to request if exists
     if (token) {
-      request = request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      request = this.addTokenToRequest(request, token);
     }
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        console.log('Intercepted HTTP error:', error);
-
-        // If error status is 401 and the error code indicates an invalid token
+        // Check if error status is 401 and token is expired
         if (error.status === 401 && error.error.code === 'token_not_valid') {
-          console.log('Access token expired, attempting to refresh.');
-
-          // Refresh the token
-          return this.authService.refreshToken().pipe(
-            switchMap(() => {
-              const newToken = this.authService.getAccessToken();
-              if (newToken) {
-                request = request.clone({
-                  setHeaders: {
-                    Authorization: `Bearer ${newToken}`
-                  }
-                });
-              }
-              return next.handle(request);
-            }),
-            catchError((refreshError) => {
-              console.error('Token refresh failed', refreshError);
-              this.authService.logout();  // Log out the user if refresh fails
-              return throwError(refreshError);
-            })
-          );
+          return this.handle401Error(request, next);
         }
-
-        // For other errors, propagate the error
         return throwError(error);
       })
     );
   }
-}  
+
+  private addTokenToRequest(request: HttpRequest<any>, token: string): HttpRequest<any> {
+    return request.clone({
+      setHeaders: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+  }
+
+  private handle401Error(request: HttpRequest<any>, next: HttpHandler) {
+    if (!this.isRefreshing) {
+      this.isRefreshing = true;
+      this.refreshTokenSubject.next(null);
+
+      // Call AuthService to refresh the token
+      return this.authService.refreshToken().pipe(
+        switchMap((token: any) => {
+          this.isRefreshing = false;
+          this.refreshTokenSubject.next(token.access);
+          return next.handle(this.addTokenToRequest(request, token.access));  // Retry the original request with new token
+        }),
+        catchError((error) => {
+          this.isRefreshing = false;
+          this.authService.logout();  // Log out the user if refresh token fails
+          return throwError(error);
+        })
+      );
+    } else {
+      // If refreshing is already in progress, queue other requests
+      return this.refreshTokenSubject.pipe(
+        switchMap((token) => {
+          return next.handle(this.addTokenToRequest(request, token));
+        })
+      );
+    }
+  }
+}

@@ -5,6 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from chat.models import ChatMessage, Thread
+from django.db.models import Q
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
@@ -46,3 +48,49 @@ def login(request):
         }, status=status.HTTP_200_OK)
     else:
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+# return all threads (dms a user has)
+@api_view(['GET'])  # Ensures it is an API view
+@permission_classes([IsAuthenticated])  # Ensure the user is authenticated
+def threads(request):
+    user = request.user  # Ensure the user is authenticated
+    
+    if user.is_anonymous:  # Check if user is anonymous
+        return Response({"error": "User is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Fetch threads for the authenticated user
+    threads = Thread.objects.by_user(user=user).prefetch_related('chatmessage_thread')
+
+    # Format threads for the response
+    threads_data = []
+    for thread in threads:
+        messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username')
+        threads_data.append({
+            'first_user': thread.first_user.username,
+            'second_user': thread.second_user.username,
+            'messages': list(messages),
+        })
+
+    return Response({'threads': threads_data})
+
+# return all messages in a thread
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def thread_messages(request, recipient_id):
+    user = request.user
+
+    # Try to find a thread between the authenticated user and the recipient
+    try:
+        thread = Thread.objects.get(
+            (Q(first_user=user) & Q(second_user_id=recipient_id)) | 
+            (Q(first_user_id=recipient_id) & Q(second_user=user))
+        )
+    except Thread.DoesNotExist:
+        return Response({"error": "Thread does not exist"}, status=404)
+
+    # Fetch all messages in the thread, ordered by timestamp
+    messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp').values(
+        'message', 'timestamp', 'sender_id'  # Return user_id instead of username
+    )
+
+    return Response({'messages': list(messages)})

@@ -7,6 +7,7 @@ from channels.auth import get_user
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from urllib.parse import parse_qs
+from chat.models import ChatMessage, Thread
 
 # the consumer will handle the websocket connection that is initiated with the client
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -51,7 +52,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
     if self_user.id != sender_id:
       print(f"Error: Sender mismatch, should be {self_user.id}, but was {sender_id}")
       return False  # Stop the operation if the sender is not authenticated
+    
+    # Fetch the sender and recipient users from the database
+    sender = await self.get_user_object(sender_id)
+    recipient = await self.get_user_object(recipient_id)
+    
+    # Get or create the thread between the users
+    thread = await self.get_thread(sender, recipient)
 
+    # Save the message to the database
+    chat_message = await self.create_chat_message(thread, sender, msg)
+
+    # response back to client
     response = {
       'message': msg,
       'sender_id': self_user.id,
@@ -99,6 +111,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return User.objects.get(id=user_id)
     except User.DoesNotExist:
         return None
+  # Get a thread between two users
+  @database_sync_to_async
+  def get_thread(self, sender, recipient):
+      thread = Thread.objects.get(
+          first_user=min(sender, recipient, key=lambda user: user.id),
+          second_user=max(sender, recipient, key=lambda user: user.id)
+      )
+      return thread
+
+  # Save the chat message to the database
+  @database_sync_to_async
+  def create_chat_message(self, thread, sender, message):
+      return ChatMessage.objects.create(
+          thread=thread,
+          sender=sender,
+          message=message
+      )
 
 # Need to explicitly handle tokens with channels, so a user can be authenticated 
 @database_sync_to_async
