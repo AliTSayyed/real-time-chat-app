@@ -3,7 +3,7 @@ export interface ChatMessage {
   message: string;
   sender_id: number | null;
   recipient_id?: number | null;
-  timestamp?: string;
+  timestamp: string;
   sender_username?: string,
 }
 

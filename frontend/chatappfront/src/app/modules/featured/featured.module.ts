@@ -7,6 +7,7 @@ import { HomeComponent } from './home/home.component';
 import { ContactsComponent } from './contacts/contacts.component';
 import { ProfileComponent } from './profile/profile.component';
 import { LoginComponent } from "./login/login.component";
+import { CustomDatePipe } from '../core/pipes/custom-date.pipe';
 
 
 
@@ -16,6 +17,7 @@ import { LoginComponent } from "./login/login.component";
     CommonModule,
     FeaturedRoutingModule,
     FormsModule,
+    CustomDatePipe
 ]
 })
 export class FeaturedModule { }

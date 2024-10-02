@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from urllib.parse import parse_qs
 from chat.models import ChatMessage, Thread
+from datetime import datetime, timezone
 
 # the consumer will handle the websocket connection that is initiated with the client
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -63,11 +64,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # Save the message to the database
     chat_message = await self.create_chat_message(thread, sender, msg)
 
+    # get the current date the message was sent
+    # Get the current date and time in UTC
+    message_date = datetime.now(tz=timezone.utc)
+    # Format the date as ISO 8601 (or any other format you prefer)
+    formatted_date = message_date.isoformat()
+
     # response back to client
     response = {
       'message': msg,
       'sender_id': self_user.id,
-      'recipient_id': recipient_id
+      'recipient_id': recipient_id,
+      'timestamp': formatted_date,
     }
 
     await self.channel_layer.group_send( # will update all the browsers of the recipient
@@ -102,7 +110,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     await self.send(text_data=json.dumps({
       'message': content['message'],
       'sender_id': content['sender_id'],
-      'recipient_id':content['recipient_id']
+      'recipient_id':content['recipient_id'],
+      'timestamp':content['timestamp'],
     }))
 
   @database_sync_to_async

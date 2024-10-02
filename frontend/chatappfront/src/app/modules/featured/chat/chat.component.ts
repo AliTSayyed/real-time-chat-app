@@ -16,6 +16,7 @@ export class ChatComponent {
   userMessage: string = ''; // this is what the user types.
   messages: ChatMessage[] = []; // list of messages to display in the thread
 
+  // default to setting all chats to off on page load. 
   activeChat: boolean = false;
 
   private messageSubscription!: Subscription; // creates a subscription to all current messages being sent.
@@ -26,6 +27,7 @@ export class ChatComponent {
     message: '',
     sender_id: null,
     recipient_id: null,
+    timestamp: '',
   };
 
   constructor(
@@ -80,6 +82,7 @@ export class ChatComponent {
         message: this.userMessage,
         sender_id: this.userID,
         recipient_id: this.recipientID,
+        timestamp: '',
       };
 
       this.websocketService.send(this.chatMessage);

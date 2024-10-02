@@ -5,10 +5,14 @@
 <div id="contacts">
   <ul>
     <!-- Iterate over the threads and display each thread -->
-    <li *ngFor="let thread of threads" class="contact" (click)="selectContactForChat(thread)">
+    <li 
+    *ngFor="let thread of threads" class="contact" 
+    [ngClass]="{'active': thread === selectedThread}"
+    (click)="selectContactForChat(thread)"
+    >
       <div class="wrap">
         <span class="contact-status online"></span>
-        <img src="http://emilcarlsson.se/assets/placeholder.png" alt="" />
+        <img src="User Icon 1.png" alt="" />
         <div class="meta">
           <!-- Display the names of the two users in the thread -->
           <p class="name" >{{thread.recipient_username}}</p>
