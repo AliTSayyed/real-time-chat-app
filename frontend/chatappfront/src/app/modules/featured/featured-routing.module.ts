@@ -13,7 +13,7 @@ const routes: Routes = [{
   path:'login',
   component: LoginComponent
 },
-{ path: '**', redirectTo: '' },
+{ path: '**', redirectTo: '' }, // unkown path goes back to home component, unless logged out then it goes to login componenet.
 ];
 
 @NgModule({

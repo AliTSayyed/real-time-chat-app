@@ -1,7 +1,7 @@
-<div class="content">
+<div *ngIf="activeChat; else noChat" class="content">
   <div class="contact-profile">
     <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
-    <p>Recipient</p>
+    <p>{{recipientName}}</p>
   </div>
   <div class="messages">
     <ul>
@@ -15,9 +15,9 @@
     <div class="wrap">
       <input type="text" 
       placeholder="Write your message..." 
-      [(ngModel)] = "message"
+      [(ngModel)] = "userMessage" 
       (keyup.enter)="sendMessage()"
-      />
+      /> <!--two way binding using ngModel, records key pressed and shows it on the screen, and binds it to the message var-->
       <i class="fa fa-paperclip attachment" aria-hidden="true"></i>
       <button class="submit">
         <i class="fa fa-paper-plane" aria-hidden="true"></i>
@@ -25,3 +25,9 @@
     </div>
   </div>
 </div>
+
+<ng-template #noChat>
+    <div class="no-chat-content">
+      Click on a chat to see your conversations
+    </div>
+</ng-template>

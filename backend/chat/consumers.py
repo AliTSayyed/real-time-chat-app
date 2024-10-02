@@ -111,6 +111,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return User.objects.get(id=user_id)
     except User.DoesNotExist:
         return None
+    
   # Get a thread between two users
   @database_sync_to_async
   def get_thread(self, sender, recipient):

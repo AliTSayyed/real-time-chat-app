@@ -64,10 +64,20 @@ def threads(request):
     # Format threads for the response
     threads_data = []
     for thread in threads:
-        messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username')
+        # determine who the sender is and who the recipient is based on which user is logged in
+        if thread.first_user == user:
+            sender = thread.first_user
+            recipient = thread.second_user
+        else:
+            sender = thread.second_user
+            recipient = thread.first_user
+
+        messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username', 'sender__id')
         threads_data.append({
-            'first_user': thread.first_user.username,
-            'second_user': thread.second_user.username,
+            'sender_username': sender.username,
+            'recipient_username': recipient.username,
+            'sender_id': sender.id,
+            'recipient_id': recipient.id,
             'messages': list(messages),
         })
 
@@ -90,7 +100,7 @@ def thread_messages(request, recipient_id):
 
     # Fetch all messages in the thread, ordered by timestamp
     messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp').values(
-        'message', 'timestamp', 'sender_id'  # Return user_id instead of username
+        'message', 'timestamp', 'sender_id'  # Return sender_id instead of username for frontend filtering
     )
 
-    return Response({'messages': list(messages)})
+    return Response({'messages': list(messages)}) # use list(messages) to convert messages query set into a python list. 
