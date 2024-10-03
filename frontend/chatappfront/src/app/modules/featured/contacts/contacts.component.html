@@ -5,25 +5,37 @@
 <div id="contacts">
   <ul>
     <!-- Iterate over the threads and display each thread -->
-    <li 
-    *ngFor="let thread of threads" class="contact" 
-    [ngClass]="{'active': thread === selectedThread}"
-    (click)="selectContactForChat(thread)"
+    <li
+      *ngFor="let thread of threads"
+      class="contact"
+      [ngClass]="{ active: thread === selectedThread }"
+      (click)="selectContactForChat(thread)"
     >
       <div class="wrap">
         <span class="contact-status online"></span>
         <img src="User Icon 1.png" alt="" />
         <div class="meta">
-          <!-- Display the names of the two users in the thread -->
-          <p class="name" >{{thread.recipient_username}}</p>
+          <div class="name-and-date">
+            <!-- Display the name of the recipient user in the thread -->
+            <p class="name">{{ thread.recipient_username }}</p>
+            <!-- Display the time the message was last sent -->
+            <p class="date">
+              {{
+                thread.messages[thread.messages.length - 1].timestamp
+                  | customdate2
+              }}
+            </p>
+          </div>
           <!-- Display the latest message preview -->
-          <p class="preview" *ngIf="thread.messages.length > 0; else noMessages">
+          <p
+            class="preview"
+            *ngIf="thread.messages.length > 0; else noMessages"
+          >
             {{ thread.messages[thread.messages.length - 1].message }}
           </p>
           <ng-template #noMessages>
             <p class="preview">No messages yet</p>
           </ng-template>
-          
         </div>
       </div>
     </li>

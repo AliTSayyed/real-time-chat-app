@@ -8,6 +8,7 @@ import { ContactsComponent } from './contacts/contacts.component';
 import { ProfileComponent } from './profile/profile.component';
 import { LoginComponent } from "./login/login.component";
 import { CustomDatePipe } from '../core/pipes/custom-date.pipe';
+import { Customdate2Pipe } from '../core/pipes/customdate2.pipe';
 
 
 
@@ -17,7 +18,8 @@ import { CustomDatePipe } from '../core/pipes/custom-date.pipe';
     CommonModule,
     FeaturedRoutingModule,
     FormsModule,
-    CustomDatePipe
+    CustomDatePipe,
+    Customdate2Pipe,
 ]
 })
 export class FeaturedModule { }

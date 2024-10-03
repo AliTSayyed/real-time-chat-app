@@ -138,6 +138,10 @@
   font-weight: 600;
 }
 
+#contacts ul li.contact .wrap .meta .date {
+  font-weight: 600;
+}
+
 #contacts ul li.contact .wrap .meta .preview {
   margin: 5px 0 0 0;
   padding: 0 0 1px;
@@ -221,4 +225,10 @@
   #bottom-bar button span {
     display: none;
   }
+}
+
+.name-and-date {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }

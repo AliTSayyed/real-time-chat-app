@@ -6,7 +6,7 @@ import { ThreadData } from '../../../../types';
   providedIn: 'root'
 })
 export class ChatService {
-
+  // purpose of this service is to send over the data from the contacts component to the chat component so that the right chat it pulled up when the respective contact is clicked on the side pannel.
   // create a BehaviorSubject to hold the selected chat data (sender_id, recipient_id, and recipient username)
   private selectedChatSource = new BehaviorSubject<{sendDataToChat: ThreadData} | null>(null);
 

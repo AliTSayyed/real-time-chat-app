@@ -12,7 +12,7 @@ export class ContactsComponent {
   threads: ThreadData[] = [];
   selectedThread: ThreadData | null = null;
 
-  constructor(private http: HttpClient, private contactToChatService: ChatService) {}
+  constructor(private http: HttpClient, private contactToChatService: ChatService,) {}
 
   // load all chats a user has 
   ngOnInit(): void {

@@ -1,4 +1,10 @@
-import { Component, Input, SimpleChanges } from '@angular/core';
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  Input,
+  ViewChild,
+} from '@angular/core';
 import { WebsocketService } from '../../core/services/websocket.service';
 import { Subscription } from 'rxjs';
 import { ChatMessage, LoadedMessages } from '../../../../types';
@@ -9,18 +15,20 @@ import { ChatService } from '../../core/services/chat.service';
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
 })
-export class ChatComponent {
+export class ChatComponent implements AfterViewChecked {
   @Input() userID: number | null = null;
   recipientID: number | null = null;
   recipientName: string = '';
   userMessage: string = ''; // this is what the user types.
   messages: ChatMessage[] = []; // list of messages to display in the thread
 
-  // default to setting all chats to off on page load. 
+  // default to setting all chats to off on page load.
   activeChat: boolean = false;
 
   private messageSubscription!: Subscription; // creates a subscription to all current messages being sent.
   private dbMessagesSubscription!: Subscription; // creates a subscription to all messages from the database.
+
+  @ViewChild('messagesContainer') private messagesContainer!: ElementRef; // view child to access DOM of the chats to automatically scroll down
 
   // chat message object that will store the message and details sent by the user.
   chatMessage: ChatMessage = {
@@ -35,15 +43,33 @@ export class ChatComponent {
     private chatService: ChatService
   ) {}
 
+  // Automatically scroll to the bottom of the chat on chat load and on new message send
+  scrollToBottom(): void {
+    if (this.messagesContainer && this.messagesContainer.nativeElement) {
+      try {
+        this.messagesContainer.nativeElement.scrollTop =
+          this.messagesContainer.nativeElement.scrollHeight; // automatically scroll to the bottom of the contianers height
+      } catch (err) {
+        console.error('Scroll error: ', err);
+      }
+    }
+  }
+
+  // After each change of the view (new message sent), scroll down. Scrolling down wont automatically happend without this function.
+  ngAfterViewChecked(): void {
+    this.scrollToBottom();
+  }
+
   // push all realtime messages sent by the users (stored in mememory and then the database, but on page refresh will these messages then only be loaded by the database.)
   ngOnInit() {
     this.messageSubscription = this.websocketService
       .getMessages()
       .subscribe((msg: ChatMessage) => {
         this.messages.push(msg);
+        this.scrollToBottom(); // scroll down when new message is sent or received
       });
 
-    // when a chat is loaded, need to obtain the recipient id, name, and previous messages from the database. 
+    // when a chat is loaded, need to obtain the recipient id, recipient name, and previous messages from the database.
     this.chatService.getSelectedChatData().subscribe((selectedChat) => {
       if (selectedChat) {
         this.userID = selectedChat.sendDataToChat.sender_id;
@@ -68,8 +94,10 @@ export class ChatComponent {
       this.dbMessagesSubscription = this.websocketService
         .getDatabaseMessages(this.recipientID)
         .subscribe((response: LoadedMessages) => {
+          // after getting all the messages as an observable then subscribe to it
           this.messages = response.messages; // Extract the 'messages' array from the response
           console.log(response.messages); // log the entire chat with other user from database.
+          this.scrollToBottom(); // scroll to bottom after loading all the messages.
         });
     }
   }
