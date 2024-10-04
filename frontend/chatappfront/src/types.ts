@@ -14,9 +14,12 @@ export interface LoadedMessages {
 
 // thread interface for the contacts component, and send that data over to the selected chat component. 
 export interface ThreadData {
-  'sender_username': string,
-  'recipient_username': string,
-  'sender_id': number,
-  'recipient_id': number,
-  'messages': ChatMessage[],
+  sender_username: string,
+  recipient_username: string,
+  sender_id: number,
+  recipient_id: number,
+  messages: {
+    latest_message: string,
+    timestamp: string,
+  }
 }

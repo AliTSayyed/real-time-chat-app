@@ -9,6 +9,7 @@ import { WebsocketService } from '../../core/services/websocket.service';
 import { Subscription } from 'rxjs';
 import { ChatMessage, LoadedMessages } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
+import { LastmessageService } from '../../core/services/lastmessage.service';
 
 @Component({
   selector: 'app-chat',
@@ -40,11 +41,13 @@ export class ChatComponent implements AfterViewChecked {
 
   constructor(
     private websocketService: WebsocketService,
-    private chatService: ChatService
+    private chatService: ChatService,
+    private lastMessageService: LastmessageService,
   ) {}
 
   // Automatically scroll to the bottom of the chat on chat load and on new message send
   scrollToBottom(): void {
+    // use this if statement to run after the DOM element has loaded. 
     if (this.messagesContainer && this.messagesContainer.nativeElement) {
       try {
         this.messagesContainer.nativeElement.scrollTop =
@@ -66,6 +69,7 @@ export class ChatComponent implements AfterViewChecked {
       .getMessages()
       .subscribe((msg: ChatMessage) => {
         this.messages.push(msg);
+        this.lastMessageService.updateLatestMessage(msg); // send real time message to the contacts component to update latest message preivew.
         this.scrollToBottom(); // scroll down when new message is sent or received
       });
 

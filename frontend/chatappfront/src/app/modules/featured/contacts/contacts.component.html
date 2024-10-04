@@ -21,7 +21,7 @@
             <!-- Display the time the message was last sent -->
             <p class="date">
               {{
-                thread.messages[thread.messages.length - 1].timestamp
+               thread.messages.timestamp
                   | customdate2
               }}
             </p>
@@ -29,9 +29,9 @@
           <!-- Display the latest message preview -->
           <p
             class="preview"
-            *ngIf="thread.messages.length > 0; else noMessages"
+            *ngIf="thread.messages.latest_message ; else noMessages"
           >
-            {{ thread.messages[thread.messages.length - 1].message }}
+            {{ thread.messages.latest_message }}
           </p>
           <ng-template #noMessages>
             <p class="preview">No messages yet</p>

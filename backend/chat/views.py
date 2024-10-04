@@ -73,14 +73,18 @@ def threads(request):
             recipient = thread.first_user
 
         # fetch only the last message sent since this is only used in the contacts message preview (rest of data sent to chat component in frontend)
-        messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username', 'sender__id')
+        last_message = thread.chatmessage_thread.all().order_by('-timestamp').first()
+        # messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username', 'sender__id')
         
         threads_data.append({
             'sender_username': sender.username,
             'recipient_username': recipient.username,
             'sender_id': sender.id,
             'recipient_id': recipient.id,
-            'messages': list(messages),
+            'messages': {
+                'latest_message': last_message.message,
+                'timestamp': last_message.timestamp,
+            },
         })
 
     return Response({'threads': threads_data})
