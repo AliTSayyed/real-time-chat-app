@@ -3,7 +3,7 @@
     <img src="User Icon 1.png" alt="" />
     <p>{{recipientName}}</p>
   </div>
-  <div class="messages"  #messagesContainer>
+  <div class="messages" #messagesContainer (scroll)="onScrollMaxUp()">
     <ul>
       <li [ngClass]="msg.sender_id !== userID ? 'replies' : 'sent'" *ngFor="let msg of messages">
         <img src="User Icon 1.png" alt="" />

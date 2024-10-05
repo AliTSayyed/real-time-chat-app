@@ -104,9 +104,17 @@ def thread_messages(request, recipient_id):
     except Thread.DoesNotExist:
         return Response({"error": "Thread does not exist"}, status=404)
 
-    # Fetch all messages in the thread, ordered by timestamp
-    messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp').values(
-        'message', 'timestamp', 'sender_id'  # Return sender_id instead of username for frontend filtering
-    )
+    # Fetch all messages in the thread, ordered by timestamp. Only send 30 messages on page load, to view previous messages, user must scroll up.
+    # Use a pagination system to retrieve the next 20 messages that were in the thread. 
 
-    return Response({'messages': list(messages)}) # use list(messages) to convert messages query set into a python list. 
+    limit = int(request.GET.get('limit', 30)) # default to get the last 30 messages in the thread
+    offset = int(request.GET.get('offset', 0)) # Start at the latest message 
+
+    messages = ChatMessage.objects.filter(thread=thread).order_by('-timestamp')[offset:offset+limit] # here we get the last 30 items on chat load, or whatever amount the frontend will call in its params. Splice the array. 
+
+    # Paginated response
+    serialized_messages = list(messages.values( 'message', 'timestamp', 'sender_id')) # Return sender_id instead of username for frontend filtering, use list(messages) to convert messages query set into a python list. 
+
+    return Response({'messages': serialized_messages,
+                     'has_more': offset + limit < thread.chatmessage_thread.count()
+                     }) # send the limited messages and a flag to know if there are more messages still left. 

@@ -9,7 +9,8 @@ export interface ChatMessage {
 
 // messages that have been fethced from backend database. Can add more attributes later. 
 export interface LoadedMessages {
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  has_more?: boolean,
 }
 
 // thread interface for the contacts component, and send that data over to the selected chat component. 
@@ -23,3 +24,4 @@ export interface ThreadData {
     timestamp: string,
   }
 }
+

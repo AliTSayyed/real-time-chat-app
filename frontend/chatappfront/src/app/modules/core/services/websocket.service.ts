@@ -65,9 +65,14 @@ export class WebsocketService {
     return this.messageSubject.asObservable(); // need to convert subject to observable. 
   }
 
-  // Fetch previous messages for the thread (all messages, regardless of sender)
+  // Fetch previous messages for the thread (all messages, regardless of sender) (old)
   getDatabaseMessages(recipientID: number): Observable<LoadedMessages> {
     return this.http.get<LoadedMessages>(`http://localhost:8000/api/threads/messages/${recipientID}`);
+  }
+
+  // Fetch previous messages in a paginated manner, this way we are not loading all the messages of each chat at once. 
+  getPaginatedMessages(recipientID: number, limit: number, offset: number){
+    return this.http.get<LoadedMessages>(`http://localhost:8000/api/threads/messages/${recipientID}/?limit=${limit}&offset=${offset}`); 
   }
 
 
