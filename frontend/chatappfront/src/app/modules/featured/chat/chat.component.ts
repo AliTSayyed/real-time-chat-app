@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { WebsocketService } from '../../core/services/websocket.service';
 import { Subscription } from 'rxjs';
-import { ChatMessage, LoadedMessages } from '../../../../types';
+import { ChatMessage, LoadedMessages, TypingStart, TypingStop } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
 
@@ -39,19 +39,38 @@ export class ChatComponent implements AfterViewChecked {
   offset: number = 0; // start at the latest message for splicing the response messages
   limit: number = 20; // load 20 more messages on scroll up
 
-  // chat message object that will store the message and details sent by the user.
-  chatMessage: ChatMessage = {
+  chatMessage: ChatMessage = { // chat message object that will store the message and details sent by the user.
+    type: 'chat_message',
     message: '',
     sender_id: null,
     recipient_id: null,
     timestamp: '',
   };
 
+  isTyping: boolean = false; // boolean to let recipient know user is typing
+  typingTimeout: any; // var to store a timeout object 
+
   constructor(
     private websocketService: WebsocketService,
     private chatService: ChatService,
     private lastMessageService: LastmessageService
   ) {}
+
+  // send is typing to backend when user start typing
+  onUserTyping(){
+    if (!this.isTyping){
+      this.isTyping = true;
+      this.websocketService.isTyping(this.userID, this.recipientID);
+    }
+    // Clear any previous set timeout to send a stop typing message
+    clearTimeout(this.typingTimeout);
+
+    // set a timeout to send a stop typing message to the backend after 2 seconds of no user typing 
+    this.typingTimeout = setTimeout(() => {
+      this.isTyping = false; // this will restart the typing start message on user interaction after 2 seconds of inactivity. 
+      this.websocketService.stoppedTyping(this.userID, this.recipientID);
+    }, 2000);
+  }
 
   // Function to determine if the user is at the bottom of the chat
   isUserAtBottom(): boolean {
@@ -191,6 +210,7 @@ export class ChatComponent implements AfterViewChecked {
     if (this.userMessage !== '') {
       // this is the data to send to the backend
       this.chatMessage = {
+        type: 'chat_message',
         message: this.userMessage,
         sender_id: this.userID,
         recipient_id: this.recipientID,
@@ -198,6 +218,9 @@ export class ChatComponent implements AfterViewChecked {
       };
 
       this.websocketService.send(this.chatMessage);
+      this.websocketService.stoppedTyping(this.userID, this.recipientID); // end the 'is typing...' preview after message is sent. 
+      clearTimeout(this.typingTimeout);  // Stop typing notification when message is sent
+      this.isTyping = false;
     }
     this.userMessage = '';
   }

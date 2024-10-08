@@ -30,69 +30,101 @@ class ChatConsumer(AsyncWebsocketConsumer):
   async def receive(self, text_data):
     print('received')
     data = json.loads(text_data) # reformat json from string to python dict
-  
-    msg = data['message']
+    message_type = data.get('type') # get the message type from the websocket connection
+
     sender_id = data['sender_id']
     recipient_id = data['recipient_id']
 
-    if not msg:
-      print('Error, empty message')
-      return False
-    
-    # response back to client after it sent a message
-    sent_by_user = await self.get_user_object(sender_id)
-    send_to_user = await self.get_user_object(recipient_id)
-
-    if not sent_by_user:
-      print('Error, sender id not found')
-    if not send_to_user:
-      print('Error, recipeint id not found')
-
-    recipient_chat_room = f'user_chat_room_{recipient_id}' # broadcast the same message to the recipient
-    self_user = self.scope['user']
-    if self_user.id != sender_id:
-      print(f"Error: Sender mismatch, should be {self_user.id}, but was {sender_id}")
-      return False  # Stop the operation if the sender is not authenticated
-    
     # Fetch the sender and recipient users from the database
     sender = await self.get_user_object(sender_id)
     recipient = await self.get_user_object(recipient_id)
+
+    if not sender:
+      print('Error, sender id not found')
+    if not recipient:
+      print('Error, recipeint id not found')
+
+    # create the correct chat rooms for the 2 unique users. 
+    recipient_chat_room = f'user_chat_room_{recipient_id}' # broadcast the same message to the recipient
+  
+    # Stop the operation if the sender is not authenticated
+    self_user = self.scope['user']
+    if self_user.id != sender_id:
+      print(f"Error: Sender mismatch, should be {self_user.id}, but was {sender_id}")
+      return False 
     
-    # Get or create the thread between the users
-    thread = await self.get_thread(sender, recipient)
+    # condition for sending a chat message
+    if message_type == 'chat_message':
+      msg = data['message']
+      if not msg:
+        print('Error, empty message')
+        return False
+      
+      # Get or create the thread between the users
+      thread = await self.get_thread(sender, recipient)
 
-    # Save the message to the database
-    chat_message = await self.create_chat_message(thread, sender, msg)
+      # Save the message to the database
+      await self.create_chat_message(thread, sender, msg)
 
-    # get the current date the message was sent
-    # Get the current date and time in UTC
-    message_date = datetime.now(tz=timezone.utc)
-    # Format the date as ISO 8601 (or any other format you prefer)
-    formatted_date = message_date.isoformat()
+      # get the current date the message was sent, time in UTC
+      message_date = datetime.now(tz=timezone.utc)
+      # Format the date as ISO 8601
+      formatted_date = message_date.isoformat()
 
-    # response back to client
-    response = {
-      'message': msg,
-      'sender_id': self_user.id,
-      'recipient_id': recipient_id,
-      'timestamp': formatted_date,
-    }
+      # response back to client
+      response = {
+        'type':'chat_message',
+        'message': msg,
+        'sender_id': sender_id,
+        'recipient_id': recipient_id,
+        'timestamp': formatted_date,
+      }
 
-    await self.channel_layer.group_send( # will update all the browsers of the recipient
-      recipient_chat_room,
+      await self.channel_layer.group_send( # will update all the browsers of the recipient
+        recipient_chat_room,
+        {
+          'type':'chat_message',
+          'content': response
+        }) 
+
+      await self.channel_layer.group_send( # will update all the browsers of the sender
+        self.chat_room,
       {
         'type':'chat_message',
         'content': response
+      }) 
+    
+    # Broadcastng recipient has started typing  
+    elif message_type == 'typing_start':
+      print('user is typing')
+      response = {
+        'type':'typing_start',
+        'sender_id': sender_id,
+        'recipient_id': recipient_id,
       }
-    ) 
 
-    await self.channel_layer.group_send( # will update all the browsers of the sender
-      self.chat_room,
-    {
-      'type':'chat_message',
-      'content': response
-    }
-  ) 
+      await self.channel_layer.group_send( # will update all the browsers of the recipient to show sender 'is typing...'
+      recipient_chat_room,
+      {
+        'type':'typing_start',
+        'content': response
+      }) 
+  
+    # Broadcastng recipient has stopped typing 
+    elif message_type == 'typing_stop':
+      print('user stopped typing')
+      response = {
+        'type':'typing_stop',
+        'sender_id': sender_id,
+        'recipient_id': recipient_id,
+      }
+
+      await self.channel_layer.group_send( # will update all the browsers of the recipient to stop showing 'is typing...'
+      recipient_chat_room,
+      {
+        'type':'typing_stop',
+        'content': response
+      }) 
 
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
   async def disconnect(self, close_code):
@@ -102,16 +134,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
     self.channel_name
     )
   
-  # custom send handler
+  # custom send chat message handler
   async def chat_message(self, event):
-    print('chat_message', event)
     content = event['content']
 
     await self.send(text_data=json.dumps({
+       'type':'chat_message',
       'message': content['message'],
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
       'timestamp':content['timestamp'],
+    }))
+
+  # typing start handler
+  async def typing_start(self, event):
+    content = event['content']
+
+    await self.send(text_data=json.dumps({
+      'type':'typing_start',
+      'sender_id': content['sender_id'],
+      'recipient_id':content['recipient_id'],
+    }))
+  
+  # typing stop handler 
+  async def typing_stop(self, event):
+    content = event['content']
+
+    await self.send(text_data=json.dumps({
+      'type':'typing_stop',
+      'sender_id': content['sender_id'],
+      'recipient_id':content['recipient_id'],
     }))
 
   @database_sync_to_async

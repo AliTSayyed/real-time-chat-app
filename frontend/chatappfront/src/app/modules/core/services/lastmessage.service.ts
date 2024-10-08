@@ -17,7 +17,6 @@ export class LastmessageService {
 
   // Function to update the subject with the latest message
   updateLatestMessage(message: ChatMessage){
-    console.log('updating message:', message)
     this.latestMessageSubject.next(message); // holds on to the latest message so contact component can subscribe to it. 
   }
 

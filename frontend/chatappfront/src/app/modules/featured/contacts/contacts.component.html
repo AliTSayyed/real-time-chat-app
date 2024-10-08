@@ -18,21 +18,28 @@
           <div class="name-and-date">
             <!-- Display the name of the recipient user in the thread -->
             <p class="name">{{ thread.recipient_username }}</p>
-            <!-- Display the time the message was last sent -->
-            <p class="date">
-              {{
-               thread.messages.timestamp
-                  | customdate2
-              }}
+
+            <!-- Conditionally hide the date if typingRecipient is true -->
+            <p class="date" *ngIf="!typingRecipient[thread.recipient_id]">
+              {{ thread.messages.timestamp | customdate2 }}
             </p>
           </div>
-          <!-- Display the latest message preview -->
-          <p
-            class="preview"
-            *ngIf="thread.messages.latest_message ; else noMessages"
-          >
-            {{ thread.messages.latest_message }}
+
+          <!-- Conditionally show 'is typing...' if typingRecipient is true -->
+          <p class="preview is-typing" *ngIf="typingRecipient[thread.recipient_id]; else showLatestMessage">
+            is typing...
           </p>
+
+          <!-- Display the latest message preview when typingRecipient is false -->
+          <ng-template #showLatestMessage>
+            <p
+              class="preview"
+              *ngIf="thread.messages.latest_message; else noMessages"
+            >
+              {{ thread.messages.latest_message }}
+            </p>
+          </ng-template>
+
           <ng-template #noMessages>
             <p class="preview">No messages yet</p>
           </ng-template>

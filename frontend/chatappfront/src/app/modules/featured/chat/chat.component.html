@@ -21,6 +21,7 @@
       <input type="text" 
       placeholder="Write your message..." 
       [(ngModel)]="userMessage" 
+      (keypress)="onUserTyping()"
       (keyup.enter)="sendMessage()" />
       <i class="fa fa-paperclip attachment" aria-hidden="true"></i>
       <button class="submit">

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
-import { ChatMessage, LoadedMessages } from '../../../../types';
+import { ChatMessage, LoadedMessages, TypingStart, TypingStop } from '../../../../types';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable({
@@ -18,6 +18,8 @@ export class WebsocketService {
   // a subject can be an observer and a observable, can emmit values to subscribers and recieve (.next()) values as well. 
   private messageSubject = new Subject<ChatMessage>(); 
 
+  private userTypingSubject = new Subject<TypingStart | TypingStop>(); // subject to monitor if there is a typing start or stop message sent. 
+
   constructor(private http: HttpClient) {}
 
   // Connect to the server's websocket 
@@ -32,7 +34,11 @@ export class WebsocketService {
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log('Message sent from backend:', data)
-      this.messageSubject.next(data); // emmit message to the message subject. 
+      if (data.type === 'chat_message'){
+        this.messageSubject.next(data); // emmit message to the message subject if it is of type chat message
+      } else if (data.type === 'typing_start' || data.type === 'typing_stop'){
+         this.userTypingSubject.next(data); // emmit message to Typing subject if it is of type starting or stopping typing. 
+      }
     };
 
     // log error
@@ -51,9 +57,10 @@ export class WebsocketService {
   // Check if the WebSocket connection is open
   if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({
-      'message': chatMessage.message,
-      'sender_id': chatMessage.sender_id,
-      'recipient_id': chatMessage.recipient_id,
+        type: 'chat_message',
+        message: chatMessage.message,
+        sender_id: chatMessage.sender_id,
+        recipient_id: chatMessage.recipient_id,
     }));
   } else {
     console.error('WebSocket connection is not open. Ready state:', this.socket.readyState);
@@ -63,6 +70,10 @@ export class WebsocketService {
   // this is how to access the current messages from the current websocket connection, until page is refreshed. 
   getMessages(){
     return this.messageSubject.asObservable(); // need to convert subject to observable. 
+  }
+  
+  getTypingStatus(){
+    return this.userTypingSubject.asObservable();
   }
 
   // Fetch previous messages for the thread (all messages, regardless of sender) (old)
@@ -75,6 +86,23 @@ export class WebsocketService {
     return this.http.get<LoadedMessages>(`http://localhost:8000/api/threads/messages/${recipientID}/?limit=${limit}&offset=${offset}`); 
   }
 
+  // Send typing start notification 
+  isTyping(senderID: number | null, recipientID: number | null): void {
+    this.socket.send(JSON.stringify({
+      type: 'typing_start',
+      sender_id: senderID,
+      recipient_id: recipientID,
+    }));
+  }
+
+  // Send typing start notification 
+  stoppedTyping(senderID: number | null, recipientID: number | null): void {
+    this.socket.send(JSON.stringify({
+      type: 'typing_stop',
+      sender_id: senderID,
+      recipient_id: recipientID,
+    }));
+  }
 
   // close the connection if its open
   disconnect() {

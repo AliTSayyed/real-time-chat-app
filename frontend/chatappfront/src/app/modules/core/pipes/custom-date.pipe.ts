@@ -29,7 +29,7 @@ export class CustomDatePipe implements PipeTransform {
 
     // Check if the date is within the last week (not including today or yesterday)
     if (timeDifference >= 2 * oneDay && timeDifference < 6 * oneDay ) {
-      return datePipe.transform(messageDate, 'EEE h:mm a'); // Day of the week, hour : minute, 
+      return datePipe.transform(messageDate, 'EEE  h:mm a'); // Day of the week, hour : minute, 
     }
 
     // else reutrn the date as month, day, year, time. 
