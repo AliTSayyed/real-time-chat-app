@@ -46,7 +46,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-     'corsheaders.middleware.CorsMiddleware',  # Ensure this is first if using django-cors-headers
+    'corsheaders.middleware.CorsMiddleware',  # Ensure this is first if using django-cors-headers
+    'chatapp.dummy_middleware.DummyMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',  # Handles session management
     'django.middleware.common.CommonMiddleware',
