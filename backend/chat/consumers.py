@@ -204,14 +204,26 @@ def get_user_from_jwt(token):
     except (InvalidToken, TokenError, User.DoesNotExist):
         return AnonymousUser()
 
-class JWTAuthMiddleware(BaseMiddleware):
+
+class JWTAuthMiddleware:
+    """
+    Middleware for JWT authentication in WebSockets.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
     async def __call__(self, scope, receive, send):
-        # Extract the token from the WebSocket connection (e.g., from query string)
-        token = parse_qs(scope['query_string'].decode()).get('token')
+        # Extract the token from the query string
+        query_string = parse_qs(scope["query_string"].decode())
+        token = query_string.get('token')
 
         if token:
+            # If the token exists, authenticate the user
             scope['user'] = await get_user_from_jwt(token[0])
         else:
+            # No token means an anonymous user
             scope['user'] = AnonymousUser()
 
-        return await super().__call__(scope, receive, send)
+        # Pass the modified scope to the next application in the stack
+        return await self.app(scope, receive, send)

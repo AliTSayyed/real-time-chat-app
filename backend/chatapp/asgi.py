@@ -22,7 +22,6 @@ django_asgi_app = get_asgi_application()
 
 # ASGI application definition with separate handlers for HTTP and WebSocket
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,  # Handles Django HTTP requests (like /admin)
     "websocket": JWTAuthMiddleware(
       AuthMiddlewareStack(
         URLRouter(
