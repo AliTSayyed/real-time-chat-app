@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, Input, input, OnChanges } from '@angular/core';
 import { ChatMessage, ThreadData, TypingStart, TypingStop } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
@@ -10,17 +10,22 @@ import { WebsocketService } from '../../core/services/websocket.service';
   templateUrl: './contacts.component.html',
   styleUrl: './contacts.component.scss'
 })
-export class ContactsComponent {
+export class ContactsComponent implements OnChanges {
+  @Input() isAuthenticated: boolean = false;
   threads: ThreadData[] = [];
   selectedThread: ThreadData | null = null;
   typingRecipient:{[id: number]: boolean} = {};
 
   constructor(private http: HttpClient, private contactToChatService: ChatService, private lastMessageService: LastmessageService, private websocketService: WebsocketService) {}
-
+  
+  // load all chats a user has after the user has been authenticated. 
+  ngOnChanges(){  
+    if (this.isAuthenticated){
+      this.getThreads();
+    }
+  }
   
   ngOnInit(): void {
-    // load all chats a user has 
-    this.getThreads();
     // get the last message sent in the thread and display it in the preview
     this.lastMessageService.getLatestMessage().subscribe((message: ChatMessage | null) => {
       if (message !== null && message.type === 'chat_message') {
