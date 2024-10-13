@@ -26,7 +26,8 @@ class Thread(models.Model):
 # model to define each message sent 
 class ChatMessage(models.Model):
   thread = models.ForeignKey(Thread, null=True, blank=True, on_delete=models.CASCADE, related_name="chatmessage_thread")
-  sender = models.ForeignKey(User, on_delete=models.CASCADE)
+  sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+  recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)  # Add recipient field
   message = models.TextField()
   timestamp = models.DateTimeField(auto_now_add=True)
-
+  is_read = models.BooleanField(default=False)  

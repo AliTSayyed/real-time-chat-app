@@ -3,6 +3,7 @@ import { Observable, Subject } from 'rxjs';
 import {
   ChatMessage,
   LoadedMessages,
+  ReadReceipt,
   TypingStart,
   TypingStop,
 } from '../../../../types';
@@ -22,8 +23,8 @@ export class WebsocketService {
   // subject used to broadcast messages to chat components, allows multiple observers to receive the same values. Its a list that stores observables of type ChatMessage.
   // a subject can be an observer and a observable, can emmit values to subscribers and recieve (.next()) values as well.
   private messageSubject = new Subject<ChatMessage>();
-
   private userTypingSubject = new Subject<TypingStart | TypingStop>(); // subject to monitor if there is a typing start or stop message sent.
+  private readReceiptSubject = new Subject<ReadReceipt>(); // subject to monitor if a message has been read
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
@@ -43,14 +44,18 @@ export class WebsocketService {
           // check message that was sent to backend and then sent back to frontend, works on one message at a time but is async.
           this.socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log('Message sent from backend:', data);
             if (data.type === 'chat_message') {
+              console.log('Message sent from backend:', data);
               this.messageSubject.next(data); // emmit message to the message subject if it is of type chat message
             } else if (
               data.type === 'typing_start' ||
               data.type === 'typing_stop'
             ) {
+              console.log('Message sent from backend:', data);
               this.userTypingSubject.next(data); // emmit message to Typing subject if it is of type starting or stopping typing.
+            } else if (data.type === 'read_receipt') {
+              console.log('Message sent from backend:', data);
+              this.readReceiptSubject.next(data); //  Any message in this subject has to have is_read = True in the DB.
             }
           };
 
@@ -91,6 +96,25 @@ export class WebsocketService {
     }
   }
 
+  // Send a read receipt to the backend if a message has been read by a recipient
+  sendReadReceipt(message_id: number | null, recipient_id: number | null) {
+    // Check if the WebSocket connection is open
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(
+        JSON.stringify({
+          type: 'read_receipt',
+          message_id: message_id,
+          recipient_id: recipient_id,
+        })
+      );
+    } else {
+      console.error(
+        'WebSocket connection is not open. Ready state:',
+        this.socket.readyState
+      );
+    }
+  }
+
   // this is how to access the current messages from the current websocket connection, until page is refreshed.
   getMessages() {
     return this.messageSubject.asObservable(); // need to convert subject to observable.
@@ -98,6 +122,10 @@ export class WebsocketService {
 
   getTypingStatus() {
     return this.userTypingSubject.asObservable();
+  }
+
+  getReadRecipts() {
+    return this.readReceiptSubject.asObservable();
   }
 
   // Fetch previous messages for the thread (all messages, regardless of sender) (old)

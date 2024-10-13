@@ -2,7 +2,6 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User, AnonymousUser
-from channels.middleware import BaseMiddleware
 from channels.auth import get_user
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -28,103 +27,119 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket message recieve from client event
   async def receive(self, text_data):
-    print('received')
+    print('received: ', text_data)
     data = json.loads(text_data) # reformat json from string to python dict
     message_type = data.get('type') # get the message type from the websocket connection
+  
+     # Handle read receipt
+    if message_type == 'read_receipt':
+        await self.handle_read_receipt(data)
+    
+    # Handle chat message
+    elif message_type == 'chat_message':
+        await self.handle_chat_message(data)
+    
+    # Handle typing start
+    elif message_type == 'typing_start':
+        await self.handle_typing_start(data)
 
-    sender_id = data['sender_id']
-    recipient_id = data['recipient_id']
+    # Handle typing stop
+    elif message_type == 'typing_stop':
+        await self.handle_typing_stop(data)
+
+  async def handle_read_receipt(self, data):
+    message_id = data.get('message_id')
+    recipient_id = data.get('recipient_id')
+    recipient_chat_room = f'user_chat_room_{recipient_id}'
+    try:
+        # Use sync_to_async to get the message asynchronously
+        message = await self.get_message(message_id)
+        if message:
+            message.is_read = True  # Mark the message as read
+            await database_sync_to_async(message.save)()  # Save the changes
+      
+        response = {
+            'type': 'read_receipt',
+            'message_id': message_id,
+            'is_read': True,
+        }
+        
+        await self.channel_layer.group_send( 
+            recipient_chat_room,  # Notify all sender's active sessions
+            {
+                'type': 'read_receipt',
+                'content': response,
+            })
+
+    except ChatMessage.DoesNotExist:
+        pass
+    
+  async def handle_chat_message(self, data):
+    sender_id = data.get('sender_id')
+    recipient_id = data.get('recipient_id')
 
     # Fetch the sender and recipient users from the database
     sender = await self.get_user_object(sender_id)
     recipient = await self.get_user_object(recipient_id)
 
     if not sender:
-      print('Error, sender id not found')
+        print('Error, sender id not found')
+        return
     if not recipient:
-      print('Error, recipeint id not found')
+        print('Error, recipient id not found')
+        return
 
-    # create the correct chat rooms for the 2 unique users. 
-    recipient_chat_room = f'user_chat_room_{recipient_id}' # broadcast the same message to the recipient
-  
-    # Stop the operation if the sender is not authenticated
-    self_user = self.scope['user']
-    if self_user.id != sender_id:
-      print(f"Error: Sender mismatch, should be {self_user.id}, but was {sender_id}")
-      return False 
-    
-    # condition for sending a chat message
-    if message_type == 'chat_message':
-      msg = data['message']
-      if not msg:
-        print('Error, empty message')
-        return False
-      
-      # Get or create the thread between the users
-      thread = await self.get_thread(sender, recipient)
+    # Create chat room names
+    recipient_chat_room = f'user_chat_room_{recipient_id}'
 
-      # Save the message to the database
-      await self.create_chat_message(thread, sender, msg)
+    # Get or create the thread between the users
+    thread = await self.get_thread(sender, recipient)
 
-      # get the current date the message was sent, time in UTC
-      message_date = datetime.now(tz=timezone.utc)
-      # Format the date as ISO 8601
-      formatted_date = message_date.isoformat()
+    # Save the message to the database
+    msg = data['message']
+    chat_message = await self.create_chat_message(thread, sender, msg, recipient)
 
-      # response back to client
-      response = {
-        'type':'chat_message',
+    # Prepare the response
+    message_date = datetime.now(tz=timezone.utc).isoformat()
+    response = {
+        'type': 'chat_message',
         'message': msg,
         'sender_id': sender_id,
         'recipient_id': recipient_id,
-        'timestamp': formatted_date,
-      }
+        'timestamp': message_date,
+        'is_read': False,
+        'message_id': chat_message.id,
+    }
 
-      await self.channel_layer.group_send( # will update all the browsers of the recipient
-        recipient_chat_room,
-        {
-          'type':'chat_message',
-          'content': response
-        }) 
+    # Send message to recipient and sender
+    await self.channel_layer.group_send(recipient_chat_room, {'type': 'chat_message', 'content': response})
+    await self.channel_layer.group_send(self.chat_room, {'type': 'chat_message', 'content': response})
 
-      await self.channel_layer.group_send( # will update all the browsers of the sender
-        self.chat_room,
-      {
-        'type':'chat_message',
-        'content': response
-      }) 
-    
-    # Broadcastng recipient has started typing  
-    elif message_type == 'typing_start':
-      print('user is typing')
-      response = {
-        'type':'typing_start',
+  async def handle_typing_start(self, data):
+    sender_id = data.get('sender_id')
+    recipient_id = data.get('recipient_id')
+
+    response = {
+        'type': 'typing_start',
         'sender_id': sender_id,
         'recipient_id': recipient_id,
-      }
+    }
 
-      await self.channel_layer.group_send( # will update all the browsers of the recipient to show sender 'is typing...'
-      recipient_chat_room,
-      {
-        'type':'typing_start',
-        'content': response
-      }) 
-  
-    # Broadcastng recipient has stopped typing 
-    elif message_type == 'typing_stop':
-      print('user stopped typing')
-      response = {
-        'type':'typing_stop',
+    recipient_chat_room = f'user_chat_room_{recipient_id}'
+    await self.channel_layer.group_send(recipient_chat_room, {'type': 'typing_start', 'content': response})
+
+  async def handle_typing_stop(self, data):
+    sender_id = data.get('sender_id')
+    recipient_id = data.get('recipient_id')
+
+    response = {
+        'type': 'typing_stop',
         'sender_id': sender_id,
         'recipient_id': recipient_id,
-      }
+    }
 
-      await self.channel_layer.group_send( # will update all the browsers of the recipient to stop showing 'is typing...'
-      recipient_chat_room,
-      {
-        'type':'typing_stop',
-        'content': response
-      }) 
+    recipient_chat_room = f'user_chat_room_{recipient_id}'
+    await self.channel_layer.group_send(recipient_chat_room, {'type': 'typing_stop', 'content': response})
 
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
   async def disconnect(self, close_code):
@@ -144,6 +159,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
       'timestamp':content['timestamp'],
+      'is_read':content['is_read'],
+      'message_id':content['message_id'],
     }))
 
   # typing start handler
@@ -165,6 +182,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
     }))
+  
+    # read receipt handler 
+  async def read_receipt(self, event):
+    content = event['content']
+
+    await self.send(text_data=json.dumps({
+      'type':'read_receipt',
+      'message_id': content['message_id'],
+      'is_read': content['is_read'],
+    }))
 
   @database_sync_to_async
   def get_user_object(self, user_id):
@@ -184,12 +211,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
   # Save the chat message to the database
   @database_sync_to_async
-  def create_chat_message(self, thread, sender, message):
+  def create_chat_message(self, thread, sender, message, recipient):
       return ChatMessage.objects.create(
           thread=thread,
           sender=sender,
-          message=message
+          message=message,
+          recipient=recipient,
+          is_read = False
       )
+  # Define the synchronous method for fetching the message
+  @database_sync_to_async
+  def get_message(self, message_id):
+    return ChatMessage.objects.get(id=message_id)
 
 # Need to explicitly handle tokens with channels, so a user can be authenticated 
 @database_sync_to_async

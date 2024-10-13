@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from chat.models import ChatMessage, Thread
 from django.db.models import Q
+from django.db.models import F
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
@@ -82,8 +83,10 @@ def threads(request):
             'sender_id': sender.id,
             'recipient_id': recipient.id,
             'messages': {
+                'sender_id':last_message.sender_id,
                 'latest_message': last_message.message,
                 'timestamp': last_message.timestamp,
+                'is_read': last_message.is_read,
             },
         })
 
@@ -113,8 +116,18 @@ def thread_messages(request, recipient_id):
     messages = ChatMessage.objects.filter(thread=thread).order_by('-timestamp')[offset:offset+limit] # here we get the last 30 items on chat load, or whatever amount the frontend will call in its params. Splice the array. 
 
     # Paginated response
-    serialized_messages = list(messages.values( 'message', 'timestamp', 'sender_id')) # Return sender_id instead of username for frontend filtering, use list(messages) to convert messages query set into a python list. 
-
+    serialized_messages = []
+    for message in messages:
+        serialized_message = {
+            'message_id': message.id,
+            'message': message.message,
+            'timestamp': message.timestamp,
+            'sender_id': message.sender.id, # Return sender_id instead of username for frontend filtering, use list(messages) to convert messages query set into a python list. 
+            'is_read': message.is_read,
+            'recipient_id': recipient_id, # recipient id is from the param. 
+        }
+       
+        serialized_messages.append(serialized_message)
     return Response({'messages': serialized_messages,
                      'has_more': offset + limit < thread.chatmessage_thread.count()
                      }) # send the limited messages and a flag to know if there are more messages still left. 

@@ -96,17 +96,21 @@
 /* Timestamp styling */
 .content .messages ul li .timestamp {
   font-size: 18px;
-  margin-left: 1140px;
+  margin-right: 10px;
+  margin-top: 10px;
   clear: both; /* Ensure timestamp is always below the floated message */
   display: block;
   text-align: right; /* Align timestamp to the right by default */
 }
 
-/* Align timestamp left for replies */
+
+/* Timestamp styling for replies (left-aligned) */
 .content .messages ul li.replies .timestamp {
-  margin-left: 30px;
-  text-align: left; /* Timestamp for recipient (left aligned) */
+  margin-top: 10px;
+  margin-right: 1340px;
+  text-align: left; /* Left-align timestamp for replies */
 }
+
 
  .content .messages ul li img {
   width: 22px;
@@ -191,3 +195,41 @@
   outline: none;
 }
 
+/* Container for checkmarks and timestamp */
+.message-info {
+  display: flex;
+  align-items: center; /* Aligns items vertically */
+  justify-content: flex-end; /* Align checkmark and timestamp to the right */
+  gap: 5px; /* Small gap between checkmark and timestamp */
+  width: 100%;
+}
+
+.message-status {
+  margin-top: 10px;
+  flex-grow: 0; /* Prevents it from stretching */
+  margin-right: 3px; /* Adjust margin as needed */
+}
+
+.timestamp {
+  flex-grow: 0; /* Prevents it from stretching */
+  font-size: 14px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+
+/* Checkmark styles */
+.single-checkmark, .double-checkmark {
+  font-size: 18px;
+  margin-right: 3px;
+  font-weight: 800;
+}
+
+.single-checkmark{
+  color: grey;
+}
+
+.double-checkmark{
+  color: blue;
+}

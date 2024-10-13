@@ -12,6 +12,7 @@ import { WebsocketService } from '../../core/services/websocket.service';
 })
 export class ContactsComponent implements OnChanges {
   @Input() isAuthenticated: boolean = false;
+  @Input() userID: number | null = null;
   threads: ThreadData[] = [];
   selectedThread: ThreadData | null = null;
   typingRecipient:{[id: number]: boolean} = {};
@@ -41,10 +42,8 @@ export class ContactsComponent implements OnChanges {
       if (thread) { // if the typing start message has the sender of the user recipient, then that recipient is typing. 
           if (msg.type === 'typing_start' && msg.sender_id === thread.recipient_id) {
           this.typingRecipient[msg.sender_id] = true; // mark recipient user as typing 
-          console.log(msg.sender_id, 'is typing right now');
         } else if (msg.type === 'typing_stop'  && msg.sender_id === thread.recipient_id) {
           this.typingRecipient[msg.sender_id] = false; // mark recipient user as no longer typing
-          console.log(msg.sender_id, 'has stopped typing');
         }
       }
     });
@@ -69,6 +68,7 @@ export class ContactsComponent implements OnChanges {
     if (thread){
       thread.messages.latest_message = message.message;
       thread.messages.timestamp = message.timestamp;
+      thread.messages.is_read = message.is_read;
     }
   }
 
