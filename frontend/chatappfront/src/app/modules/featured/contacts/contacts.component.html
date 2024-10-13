@@ -30,17 +30,25 @@
             is typing...
           </p>
 
-          <!-- Display the latest message preview when typingRecipient is false -->
+           <!-- Display the latest message preview when typingRecipient is false -->
           <ng-template #showLatestMessage>
-            <p
-              class="preview"
-              *ngIf="thread.messages.latest_message; else noMessages"
-            >
-              {{ thread.messages.latest_message }}
-            </p>
+            <div class="message-and-checkmark">
+              <p class="preview" *ngIf="thread.messages.latest_message; else noMessages">
+                {{ thread.messages.latest_message }}
+              </p>
+
+              <!-- Read Receipt Section -->
+              <div class="checkmark-container" *ngIf="thread.messages.message_sender_id === userID">
+                <p *ngIf="thread.messages.is_read; else unreadMessage">&#10003;&#10003;</p>
+                <ng-template #unreadMessage>
+                  <p>&#10003;</p>
+                </ng-template>
+              </div>
+            </div>
           </ng-template>
+          
           <ng-template #noMessages>
-            <p class="preview">No messages yet</p>
+            <p class="no-message-preview">No messages yet</p>
           </ng-template>
         </div>
       </div>

@@ -23,7 +23,7 @@ export interface ThreadData {
   sender_id: number;
   recipient_id: number;
   messages: {
-    sender_id: number;
+    message_sender_id: number | null;
     latest_message: string;
     timestamp: string;
     is_read: boolean;

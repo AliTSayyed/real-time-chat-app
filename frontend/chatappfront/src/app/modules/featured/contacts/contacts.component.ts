@@ -68,6 +68,7 @@ export class ContactsComponent implements OnChanges {
     if (thread){
       thread.messages.latest_message = message.message;
       thread.messages.timestamp = message.timestamp;
+      thread.messages.message_sender_id = message.sender_id;
       thread.messages.is_read = message.is_read;
     }
   }

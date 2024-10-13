@@ -83,7 +83,7 @@ def threads(request):
             'sender_id': sender.id,
             'recipient_id': recipient.id,
             'messages': {
-                'sender_id':last_message.sender_id,
+                'message_sender_id': last_message.sender_id,
                 'latest_message': last_message.message,
                 'timestamp': last_message.timestamp,
                 'is_read': last_message.is_read,

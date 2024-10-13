@@ -236,3 +236,19 @@
 .is-typing{
   font-style: italic;
 }
+
+.no-message-preview{
+  font-style: italic;
+}
+
+.message-and-checkmark {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkmark-container {
+  font-size: 13px;    /* Adjust the size of the checkmarks as needed */
+  color: white;       /* Adjust the color of the checkmarks */
+  font-weight: 600;
+}

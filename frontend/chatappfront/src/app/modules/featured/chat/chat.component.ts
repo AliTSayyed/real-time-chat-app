@@ -6,7 +6,6 @@ import {
   ViewChild,
 } from '@angular/core';
 import { WebsocketService } from '../../core/services/websocket.service';
-import { Subscription } from 'rxjs';
 import { ChatMessage, LoadedMessages, ReadReceipt } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
@@ -22,13 +21,7 @@ export class ChatComponent implements AfterViewChecked {
   recipientName: string = '';
   userMessage: string = ''; // this is what the user types.
   messages: ChatMessage[] = []; // list of messages to display in the thread
-
-
-  // default to setting all chats to off on page load.
-  activeChat: boolean = false;
-
-  // private messageSubscription!: Subscription; // creates a subscription to all current messages being sent.
-  // private dbMessagesSubscription!: Subscription; // creates a subscription to all messages from the database.
+  activeChat: boolean = false; // default to setting all chats to off on page load.
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef; // view child to access DOM of the chats to automatically scroll down
 
@@ -145,6 +138,7 @@ export class ChatComponent implements AfterViewChecked {
       }
       if (this.activeChat) {
         this.markMessagesAsRead(); // mark all real messages on the recipient side as read if they are looking at the chat.
+        this.lastMessageService.updateLatestMessage(msg); // after reading the message, update witht the latest message on both screens. 
       }
     });
 
@@ -175,6 +169,7 @@ export class ChatComponent implements AfterViewChecked {
         );
         if (message) {
           message.is_read = true; // mark the sender's message as read if the recipient has viewed the message.
+          this.lastMessageService.updateLatestMessage(message); // need to update the latest message on the contacts side bar as read. 
         }
       });
   }
@@ -189,7 +184,6 @@ export class ChatComponent implements AfterViewChecked {
         .subscribe((response: LoadedMessages) => {
           // after getting all the messages as an observable then subscribe to it
           this.messages = response.messages.reverse(); // Extract the 'messages' array from the response and reverse their order.
-          console.log(response); // log the entire chat with other user from database.
           // scroll to bottom after loading all the messages.
           if (this.scrollAtBottom) {
             this.scrollToBottom();
