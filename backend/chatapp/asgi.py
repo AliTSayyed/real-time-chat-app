@@ -15,7 +15,7 @@ from channels.auth import AuthMiddlewareStack
 from chat.consumers import JWTAuthMiddleware
 import chat.routing
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chatapp.settings')
-
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 # Synchronous Django application for handling HTTP requests
 django_asgi_app = get_asgi_application()
