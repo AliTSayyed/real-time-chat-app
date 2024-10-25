@@ -5,231 +5,308 @@
   justify-content: center;
   align-items: center;
   text-align: center;
-  background-color: #f5f5f5; /* Or any color for contrast */
+  background-color: #f5f5f5;
   font-size: 1.5rem;
   color: #32465a;
 }
 
- .content {
-  float: right;
-  width: 60%;
+.content {
+  width: 100%;
   height: 100%;
   overflow: hidden;
   position: relative;
 }
 
-@media screen and (max-width: 735px) {
-  .content {
-    width: calc(100% - 58px);
-    min-width: 300px !important;
-  }
-}
-@media screen and (min-width: 900px) {
-   .content {
-    width: calc(100% - 340px);
-  }
-}
- .content .contact-profile {
+.content .contact-profile {
   width: 100%;
   height: 60px;
-  line-height: 60px;
   background: #f5f5f5;
   font-size: 20px;
+  display: flex;
+  align-items: center;
 }
- .content .contact-profile img {
+
+.content .contact-profile img {
   width: 40px;
+  height: 40px;
   border-radius: 50%;
-  float: left;
-  margin: 9px 12px 0 9px;
+  margin-right: 12px;
+  object-fit: cover;
 }
-.content .contact-profile p {
-  float: left;
-}
+
+/* Messages container */
 .content .messages {
   font-size: 1.25rem;
   height: auto;
   min-height: calc(100% - 93px);
   max-height: calc(100% - 93px);
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
+  padding: 10px;
 }
-@media screen and (max-width: 735px) {
-.content .messages {
-    max-height: calc(100% - 105px);
-  }
-}
- .content .messages::-webkit-scrollbar {
+
+/* Custom scrollbar styling */
+.content .messages::-webkit-scrollbar {
   width: 8px;
   background: transparent;
 }
- .content .messages::-webkit-scrollbar-thumb {
+
+.content .messages::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
 }
- .content .messages ul li {
-  display: inline-block;
-  clear: both;
-  margin: 15px 15px 5px 15px;
-  width: calc(100% - 25px);
+
+/* Message list container */
+.content .messages ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Message list items */
+.content .messages ul li {
+  display: flex;
+  width: 100%;
+  margin: 15px 0;
+  position: relative;
   font-size: 0.9em;
 }
- .content .messages ul li:nth-last-child(1) {
-  margin-bottom: 20px;
-}
-.content .messages ul li.replies img {
-  margin: 6px 8px 0 0;
-  width: 30px;
-}
- .content .messages ul li.replies .message {
-  background: #435f7a;
-  color: #f5f5f5;
-}
-.content .messages ul li.sent img {
-  float: right;
-  margin: 6px 0 0 8px;
-  width: 30px;
-}
- .content .messages ul li.sent .message {
-  background: #f5f5f5;
-  float: right;
+
+/* Add extra margin to last message */
+.content .messages ul li:nth-last-child(1) {
+  margin-bottom: 60px;
 }
 
-/* Timestamp styling */
-.content .messages ul li .timestamp {
-  font-size: 18px;
-  margin-right: 10px;
-  margin-top: 10px;
-  clear: both; /* Ensure timestamp is always below the floated message */
-  display: block;
-  text-align: right; /* Align timestamp to the right by default */
+/* Message content wrapper */
+.message-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 60%;
 }
 
-
-/* Timestamp styling for replies (left-aligned) */
-.content .messages ul li.replies .timestamp {
-  margin-top: 10px;
-  margin-right: 1340px;
-  text-align: left; /* Left-align timestamp for replies */
+/* Message container */
+.message-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-
- .content .messages ul li img {
-  width: 22px;
-  border-radius: 50%;
-  float: left;
+/* Sent message alignment */
+.content .messages ul li.sent {
+  justify-content: flex-end;
 }
- .content .messages ul li p {
-  display: inline-block;
+
+.content .messages ul li.sent .message-content {
+  align-items: flex-end;
+}
+
+/* Received message alignment */
+.content .messages ul li.replies {
+  justify-content: flex-start;
+}
+
+.content .messages ul li.replies .message-content {
+  align-items: flex-start;
+}
+
+/* Message bubbles */
+.message {
   padding: 10px 15px;
   border-radius: 20px;
   max-width: 205px;
   line-height: 130%;
+  margin: 0;
+  word-wrap: break-word;
+  position: relative;
+  display: inline-block; /* Add this to contain the message text */
 }
-@media screen and (min-width: 735px) {
-   .content .messages ul li p {
-    max-width: 300px;
-  }
+
+/* Sent message styling */
+.sent .message {
+  background: #f5f5f5;
+  color: #32465a;
+  padding-right: 15px; /* Space for read receipt */
 }
- .content .message-input {
+
+/* Received message styling */
+.replies .message {
+  background: #435f7a;
+  color: #f5f5f5;
+}
+
+/* Profile images */
+.content .messages ul li img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.replies img {
+  margin: 6px 8px 0 0;
+  order: -1;
+}
+
+.sent img {
+  margin: 6px 0 0 8px;
+  order: 1;
+}
+
+/* Message info container (timestamp) */
+.message-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Sent message info alignment */
+.sent .message-info {
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+/* Received message info alignment */
+.replies .message-info {
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+
+/* Timestamp styling */
+.timestamp {
+  font-size: 14px;
+  margin: 0;
+  padding: 0;
+}
+
+/* Read receipt inline with message */
+.message-status {
+  position: relative; /* Change from absolute to relative */
+  display: inline-flex; /* Keep the checkmarks in line */
+  align-items: center;
+  margin-left: 4px; /* Add space between message and status */
+  white-space: nowrap; /* Prevent checkmarks from wrapping */
+}
+
+/* Checkmark styles */
+.single-checkmark, 
+.double-checkmark {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  user-select: none;
+  font-weight: 600;
+}
+
+.single-checkmark {
+  color: #8e8e8e;
+}
+
+.double-checkmark {
+  color: #0099ff;
+}
+
+/* Add space only to sent messages with double checkmark */
+.sent .message-text {
+  display: inline;
+  margin-right: 5px;
+}
+
+/* Message input area */
+.content .message-input {
   position: absolute;
   bottom: 0;
   width: 100%;
   z-index: 99;
+  background: #fff;
+  border-top: 1px solid #e6e6e6;
 }
- .content .message-input .wrap {
-  position: relative;
+
+.content .message-input .wrap {
+  display: flex;
+  align-items: center;
+  padding: 10px;
 }
- .content .message-input .wrap input {
-  font-family: "proxima-nova",  "Source Sans Pro", sans-serif;
-  float: left;
+
+.content .message-input .wrap input {
+  flex: 1;
+  font-family: "proxima-nova", "Source Sans Pro", sans-serif;
   border: none;
-  width: calc(100% - 90px);
   padding: 11px 32px 10px 8px;
   font-size: 1.25em;
   color: #32465a;
 }
-@media screen and (max-width: 735px) {
-   .content .message-input .wrap input {
-    padding: 15px 32px 16px 8px;
-  }
-}
- .content .message-input .wrap input:focus {
+
+.content .message-input .wrap input:focus {
   outline: none;
 }
- .content .message-input .wrap .attachment {
-  position: absolute;
-  right: 60px;
-  z-index: 4;
-  margin-top: 10px;
-  font-size: 2rem;
+
+.content .message-input .wrap .attachment {
+  position: relative;
+  margin: 0 15px;
+  font-size: 1.8rem;
   color: #435f7a;
   opacity: .5;
   cursor: pointer;
+  transition: opacity 0.3s ease;
 }
-@media screen and (max-width: 735px) {
-   .content .message-input .wrap .attachment {
-    margin-top: 17px;
-    right: 65px;
-  }
-}
- .content .message-input .wrap .attachment:hover {
+
+.content .message-input .wrap .attachment:hover {
   opacity: 1;
 }
- .content .message-input .wrap button {
-  float: right;
+
+.content .message-input .wrap button {
   border: none;
   width: 50px;
-  padding: 16px 0;
+  padding: 12px 0;
   cursor: pointer;
   background: #32465a;
   color: #f5f5f5;
+  border-radius: 3px;
 }
-@media screen and (max-width: 735px) {
-   .content .message-input .wrap button {
-    padding: 16px 0;
-  }
-}
- .content .message-input .wrap button:hover {
+
+.content .message-input .wrap button:hover {
   background: #435f7a;
 }
- .content .message-input .wrap button:focus {
+
+.content .message-input .wrap button:focus {
   outline: none;
 }
 
-/* Container for checkmarks and timestamp */
-.message-info {
-  display: flex;
-  align-items: center; /* Aligns items vertically */
-  justify-content: flex-end; /* Align checkmark and timestamp to the right */
-  gap: 5px; /* Small gap between checkmark and timestamp */
-  width: 100%;
+/* Responsive adjustments */
+@media screen and (max-width: 735px) {
+  .content .messages {
+    max-height: calc(100% - 105px);
+  }
+  
+  .message-content {
+    max-width: 80%;
+  }
+  
+  .message {
+    max-width: 100%;
+  }
+  
+  .content .message-input .wrap input {
+    padding: 15px 32px 16px 8px;
+  }
+  
+  .content .message-input .wrap .attachment {
+    margin-top: 17px;
+    right: 65px;
+  }
+  
+  .content .message-input .wrap button {
+    padding: 16px 0;
+  }
 }
 
-.message-status {
-  margin-top: 10px;
-  flex-grow: 0; /* Prevents it from stretching */
-  margin-right: 3px; /* Adjust margin as needed */
-}
-
-.timestamp {
-  flex-grow: 0; /* Prevents it from stretching */
-  font-size: 14px;
-  margin: 0;
-  padding: 0;
-  display: flex;
-}
-
-
-/* Checkmark styles */
-.single-checkmark, .double-checkmark {
-  font-size: 18px;
-  margin-right: 3px;
-  font-weight: 800;
-}
-
-.single-checkmark{
-  color: grey;
-}
-
-.double-checkmark{
-  color: blue;
+@media screen and (min-width: 735px) {
+  .message {
+    max-width: 300px;
+  }
 }

@@ -33,26 +33,24 @@
 }
 
 #sidepanel {
-  width: 20%; 
-  height: 100%; /* Full height */
-  min-width: 50px;
+  flex-grow: 1;
+  max-width: 15%; // side panel always 15% of the screen
+  min-width: 15%;
   background: #2c3e50;
   color: #f5f5f5;
   overflow: hidden;
   position: relative;
 }
 
-@media screen and (max-width: 735px) {
+@media screen and (max-width: 1000px) {
   #sidepanel {
-    width: 10%; /* Narrow width on smaller screens */
-   
+    max-width: 0%;
+    min-width: 0%; /* disappears on smaller screens */
   }
 }
 
 .chat {
-  max-width: 1875px;
   flex-grow: 1; /* Chat area grows to fill available vertical space */
   overflow-y: fixed;
   height: 100%; /* Full height */
-  margin-left: -340px;
 }
