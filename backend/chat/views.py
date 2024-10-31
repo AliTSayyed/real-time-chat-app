@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -49,11 +50,70 @@ def login(request):
         }, status=status.HTTP_200_OK)
     else:
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_users(request):
+    query = request.GET.get('q','') # default value is '' if no paramter sent from front end.
+    current_user = request.user
+
+    # Search for users whose username contains the query, except for the user logged in
+    users = User.objects.filter(
+        username__icontains=query # search for any username that contians the query, does not have to be exact 
+    ).exclude(
+        id=current_user.id
+    ).values('id', 'username')
+
+    # For each user, check if a thread exists
+    users_data = []
+    for user in users:
+        thread_exists = Thread.objects.filter(
+            (Q(first_user=current_user) & Q(second_user = user['id'])) | 
+            (Q(first_user=user['id']) & Q(second_user = current_user))
+        ).exists() 
+
+        users_data.append({
+            'id': user['id'],
+            'username': user['username'],
+            'thread_exists': thread_exists
+        })
+
+    return Response(users_data) # return all the users that exist and if they have a current thread or not. 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_thread(request):
+    other_user_id = request.data.get('user_id') # get the id a user wants to create a chat with. 
+    try:
+        other_user = User.objects.get(id=other_user_id)
+        thread = Thread.objects.filter(   # Check if a thread already exists between these users (in either direction)
+            Q(first_user=request.user, second_user=other_user) |
+            Q(first_user=other_user, second_user=request.user)
+        ).first()
+
+         # If no thread exists, create a new one
+        if not thread:
+            thread = Thread.objects.create(
+                first_user=request.user,
+                second_user=other_user
+            )
+
+        return Response({
+            'thread_id':thread.id,
+            'sender_username': request.user.username,
+            'recipient_username': other_user.username
+        })
+    except User.DoesNotExist: # can not create thread with a non existent user. 
+        return Response({'error': 'User not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
 
 # return all threads (dms a user has)
 @api_view(['GET'])  # Ensures it is an API view
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
-def threads(request):
+def get_threads(request):
     user = request.user  # Ensure the user is authenticated
     
     if user.is_anonymous:  # Check if user is anonymous
@@ -62,8 +122,11 @@ def threads(request):
     # Fetch threads for the authenticated user
     threads = Thread.objects.by_user(user=user).prefetch_related('chatmessage_thread')
 
+    # Separate threads with and without messages
+    threads_with_messages = []
+    threads_without_messages = []
+
     # Format threads for the response
-    threads_data = []
     for thread in threads:
         # determine who the sender is and who the recipient is based on which user is logged in
         if thread.first_user == user:
@@ -75,20 +138,45 @@ def threads(request):
 
         # fetch only the last message sent since this is only used in the contacts message preview (rest of data sent to chat component in frontend)
         last_message = thread.chatmessage_thread.all().order_by('-timestamp').first()
-        # messages = thread.chatmessage_thread.all().values('message', 'timestamp', 'sender__username', 'sender__id')
         
-        threads_data.append({
+        thread_data = {
             'sender_username': sender.username,
             'recipient_username': recipient.username,
             'sender_id': sender.id,
             'recipient_id': recipient.id,
             'messages': {
+                'message_sender_id': None,
+                'latest_message': '',
+                'timestamp': thread.timestamp,
+                'is_read': True,
+            }
+        }
+
+        if last_message:
+            thread_data['messages'].update({
                 'message_sender_id': last_message.sender_id,
                 'latest_message': last_message.message,
                 'timestamp': last_message.timestamp,
                 'is_read': last_message.is_read,
-            },
-        })
+            })
+            threads_with_messages.append(thread_data)
+        else:
+            threads_without_messages.append(thread_data)
+
+    # Sort threads with messages by message timestamp
+    threads_with_messages.sort(
+        key=lambda x: x['messages']['timestamp'],
+        reverse=True
+    )
+
+    # Sort threads without messages by thread timestamp
+    threads_without_messages.sort(
+        key=lambda x: x['messages']['timestamp'],
+        reverse=True
+    )
+
+    # Combine the sorted lists: messages first, then empty threads
+    threads_data = threads_with_messages + threads_without_messages
 
     return Response({'threads': threads_data})
 

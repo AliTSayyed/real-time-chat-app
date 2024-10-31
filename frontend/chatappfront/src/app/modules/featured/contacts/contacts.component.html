@@ -2,8 +2,55 @@
   <div class="search-icon">
     <label for=""><i class="fa fa-search" aria-hidden="true"></i></label>
   </div>
-  <input type="text" placeholder="Search contacts..." />
+  <input 
+  #searchInput
+  type="text" 
+  placeholder="Search contacts..." 
+  [(ngModel)]="searchQuery"
+  (input)="searchUsers(searchInput.value)"
+  (focus)="showDropdown = true"
+  />
+
+  <!-- Loading State -->
+  <div class="search-status" *ngIf="isSearching">
+    <i class="fa fa-spinner fa-spin"></i>
+  </div>  
+
+  <!-- Error Message -->
+  <div class="search-error" *ngIf="searchError">
+    {{ searchError }}
+  </div>
+
+  <!-- Search Results Dropdown -->
+  <div class="search-dropdown" *ngIf="showDropdown">
+    <div class="search-hint" *ngIf="searchQuery.length < 2">
+      Type at least 2 characters to search
+    </div>
+    <ul *ngIf="searchResults.length > 0">
+      <li *ngFor="let user of searchResults; let i = index" 
+          (click)="selectUser(user)"
+          [class.selected]="i === selectedIndex"
+          class="search-result-item">
+        <div class="user-info">
+          <img src="User Icon 1.png" alt="" />
+          <span>{{ user.username }}</span>
+        </div>
+        <span class="status" *ngIf="user.thread_exists; else createChat">
+          Existing chat
+        </span>
+        <ng-template #createChat>
+          <span class="status">
+            Create chat
+          </span>
+        </ng-template>
+      </li>
+    </ul>
+    <div class="no-results" *ngIf="searchQuery.length >= 2 && !isSearching && searchResults.length === 0">
+      No users found
+    </div>
+  </div>
 </div>
+
 
 <div id="contacts">
   <ul>
@@ -23,7 +70,7 @@
             <p class="name">{{ thread.recipient_username }}</p>
 
             <!-- Conditionally hide the date if typingRecipient is true -->
-            <p class="date" *ngIf="!typingRecipient[thread.recipient_id]">
+            <p class="date" *ngIf="!typingRecipient[thread.recipient_id] && thread.messages.latest_message.length > 0">
               {{ thread.messages.timestamp | customdate2 }}
             </p>
           </div>

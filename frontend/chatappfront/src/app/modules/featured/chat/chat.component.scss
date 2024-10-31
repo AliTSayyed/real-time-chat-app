@@ -339,3 +339,11 @@
     padding: 12px;
   }
 }
+
+.no-messages-sent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;  /* Make sure the container takes full height */
+  font-size: 1.5em;
+}

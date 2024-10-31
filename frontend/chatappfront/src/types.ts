@@ -50,3 +50,24 @@ export interface ReadReceipt {
   message_id: number;
   is_read: boolean;
 }
+
+// chaches searched users in the search bar. 
+export interface SearchCache {
+  results: any[];
+  timestamp: number;
+}
+
+// user model
+export interface User {
+  id: number;
+  username: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  display_name?: string;
+  avatar_url?: string;
+  thread_exists?: boolean;
+  last_active?: Date | string;
+  created_at?: Date | string;
+  updated_at?: Date | string;
+}
