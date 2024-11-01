@@ -107,12 +107,10 @@ export class ContactsComponent implements OnChanges {
 
   // api to get all the chats a user has
   getThreads(): void {
-    this.http
-      .get('http://localhost:8000/api/threads/')
-      .subscribe((response: any) => {
-        this.threads = response.threads;
-        console.log(this.threads);
-      });
+    this.http.get('http://localhost:8000/api/threads/').subscribe((response: any) => {
+      // Sort threads by timestamp before assigning
+      this.threads = response.threads;
+    });
   }
 
   // function to update the latest message sent in the thread on the contacts side panel to keep up with the realtime chat.
@@ -208,20 +206,21 @@ export class ContactsComponent implements OnChanges {
 
   async selectUser(user: User) {
     if (user.thread_exists) {
-      const thread = this.threads.find(
-        (t) => t.recipient_id === user.id || t.sender_id === user.id
+      // Simply find and select the existing thread without reordering
+      const existingThread = this.threads.find(t =>
+        t.recipient_id === user.id || t.sender_id === user.id
       );
-      if (thread) {
-        this.selectContactForChat(thread);
+      if (existingThread) {
+        this.selectContactForChat(existingThread);
       }
     } else {
       try {
         const response: any = await firstValueFrom(
           this.http.post('http://localhost:8000/api/create-thread/', {
-            user_id: user.id,
+            user_id: user.id
           })
         );
-
+        
         const newThread: ThreadData = {
           sender_id: this.userID!,
           recipient_id: user.id,
@@ -231,10 +230,11 @@ export class ContactsComponent implements OnChanges {
             message_sender_id: null,
             latest_message: '',
             timestamp: new Date().toString(),
-            is_read: false,
-          },
+            is_read: false
+          }
         };
-
+        
+        // New threads still go to the top since they're newly created
         this.threads.unshift(newThread);
         this.selectContactForChat(newThread);
       } catch (error) {
