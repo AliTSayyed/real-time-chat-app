@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { filter, Observable, Subject } from 'rxjs';
 import {
   ChatMessage,
   LoadedMessages,
   ReadReceipt,
   TypingStart,
   TypingStop,
+  UnreadCountsMessage,
 } from '../../../../types';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
@@ -25,7 +26,8 @@ export class WebsocketService {
   private messageSubject = new Subject<ChatMessage>();
   private userTypingSubject = new Subject<TypingStart | TypingStop>(); // subject to monitor if there is a typing start or stop message sent.
   private readReceiptSubject = new Subject<ReadReceipt>(); // subject to monitor if a message has been read
-
+  private unreadCountsSubject = new Subject<UnreadCountsMessage>(); // subject to monitor how many messages are unread 
+  
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   // Connect to the server's websocket only if a user is authenticated
@@ -44,18 +46,24 @@ export class WebsocketService {
           // check message that was sent to backend and then sent back to frontend, works on one message at a time but is async.
           this.socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === 'chat_message') {
-              console.log('Message sent from backend:', data);
-              this.messageSubject.next(data); // emmit message to the message subject if it is of type chat message
-            } else if (
-              data.type === 'typing_start' ||
-              data.type === 'typing_stop'
-            ) {
-              console.log('Message sent from backend:', data);
-              this.userTypingSubject.next(data); // emmit message to Typing subject if it is of type starting or stopping typing.
-            } else if (data.type === 'read_receipt') {
-              console.log('Message sent from backend:', data);
-              this.readReceiptSubject.next(data); //  Any message in this subject has to have is_read = True in the DB.
+            switch (data.type) {
+              case 'chat_message':
+                console.log('Message sent from backend:', data);
+                this.messageSubject.next(data);
+                break;
+              case 'typing_start':
+              case 'typing_stop':
+                console.log('Message sent from backend:', data);
+                this.userTypingSubject.next(data);
+                break;
+              case 'read_receipt':
+                console.log('Message sent from backend:', data);
+                this.readReceiptSubject.next(data);
+                break;
+              case 'unread_counts':
+                console.log('Unread counts from backend:', data);
+                this.unreadCountsSubject.next(data);
+                break;
             }
           };
 
@@ -86,6 +94,8 @@ export class WebsocketService {
           message: chatMessage.message,
           sender_id: chatMessage.sender_id,
           recipient_id: chatMessage.recipient_id,
+          thread_id: chatMessage.thread_id,
+          is_recipient_active: chatMessage.is_recipient_active
         })
       );
     } else {
@@ -116,15 +126,25 @@ export class WebsocketService {
   }
 
   // this is how to access the current messages from the current websocket connection, until page is refreshed.
-  getMessages() {
-    return this.messageSubject.asObservable(); // need to convert subject to observable.
+  getMessages(threadId: number | null): Observable<ChatMessage> {
+    return this.messageSubject.asObservable().pipe(
+      filter(message => {
+        if (threadId === null) {
+          // If no threadId is provided, don't filter messages
+          return true;
+        }
+        // Otherwise, filter for specific thread
+        return message.thread_id === threadId;
+      })
+    );
   }
 
+  // captures if someone is typing 
   getTypingStatus() {
     return this.userTypingSubject.asObservable();
   }
 
-  getReadRecipts() {
+  getReadRecipts(): Observable<ReadReceipt> {
     return this.readReceiptSubject.asObservable();
   }
 
@@ -140,6 +160,11 @@ export class WebsocketService {
     return this.http.get<LoadedMessages>(
       `http://localhost:8000/api/threads/messages/${recipientID}/?limit=${limit}&offset=${offset}`
     );
+  }
+
+  // getter for unread counts observable
+  getUnreadCounts() {
+    return this.unreadCountsSubject.asObservable();
   }
 
   // Send typing start notification

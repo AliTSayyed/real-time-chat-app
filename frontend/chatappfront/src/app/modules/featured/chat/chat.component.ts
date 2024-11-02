@@ -9,6 +9,7 @@ import { WebsocketService } from '../../core/services/websocket.service';
 import { ChatMessage, LoadedMessages, ReadReceipt } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
+import { Subject, switchMap, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-chat',
@@ -22,6 +23,7 @@ export class ChatComponent implements AfterViewChecked {
   userMessage: string = ''; // this is what the user types.
   messages: ChatMessage[] = []; // list of messages to display in the thread
   activeChat: boolean = false; // default to setting all chats to off on page load.
+  currentThreadId: number | null = null; // ensures realtime messages, read receipts, typing status, and notifications go to the correct thread.
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef; // view child to access DOM of the chats to automatically scroll down
 
@@ -41,7 +43,9 @@ export class ChatComponent implements AfterViewChecked {
     timestamp: '',
     is_read: false,
     message_id: -1,
+    thread_id: -1,
   };
+  private destroy$ = new Subject<void>();  // Create a Subject for cleanup
 
   isTyping: boolean = false; // boolean to let recipient know user is typing
   typingTimeout: any; // var to store a timeout object
@@ -129,49 +133,58 @@ export class ChatComponent implements AfterViewChecked {
 
   // push all realtime messages sent by the users (stored in mememory and then the database, but on page refresh will these messages then only be loaded by the database.)
   ngOnInit() {
-    this.websocketService.getMessages().subscribe((msg: ChatMessage) => {
-      this.messages.push(msg);
-      this.lastMessageService.updateLatestMessage(msg); // send real time message to the contacts component to update latest message preivew.
-      // scroll down when new message is sent or received
-      if (this.scrollAtBottom) {
-        this.scrollToBottom();
-      }
-      if (this.activeChat) {
-        this.markMessagesAsRead(); // mark all real messages on the recipient side as read if they are looking at the chat.
-        this.lastMessageService.updateLatestMessage(msg); // after reading the message, update witht the latest message on both screens. 
-      }
-    });
-
     // when a chat is loaded, need to obtain the recipient id, recipient name, and previous messages from the database.
-    this.chatService.getSelectedChatData().subscribe((selectedChat) => {
-      if (selectedChat) {
-        this.userID = selectedChat.sendDataToChat.sender_id;
-        this.recipientID = selectedChat.sendDataToChat.recipient_id;
-        this.recipientName = selectedChat.sendDataToChat.recipient_username;
-        this.activeChat = true;
-        console.log(
-          'Chat between user',
-          this.userID,
-          'and',
-          this.recipientID,
-          'established'
-        );
-        this.loadInitalMessages(); // after a thread is selected then load the messages
+       // Use switchMap to chain the WebSocket subscription after getting chat data
+       this.chatService.getSelectedChatData()
+       .pipe(
+         takeUntil(this.destroy$),
+         switchMap(selectedChat => {
+           if (selectedChat) {
+             this.userID = selectedChat.sendDataToChat.sender_id;
+             this.recipientID = selectedChat.sendDataToChat.recipient_id;
+             this.recipientName = selectedChat.sendDataToChat.recipient_username;
+             this.activeChat = true;
+             this.currentThreadId = selectedChat.sendDataToChat.id;
+             
+             console.log(
+               'Chat between user',
+               this.userID,
+               'and',
+               this.recipientID,
+               'established'
+             );
+             
+             // Load initial messages
+             this.loadInitalMessages();
+             
+             // Return the WebSocket stream for this thread
+             return this.websocketService.getMessages(selectedChat.sendDataToChat.id);
+           }
+           return []; // Return empty array if no selected chat
+         })
+       )
+       .subscribe((msg: ChatMessage) => {
+         this.messages.push(msg);
+         this.lastMessageService.updateLatestMessage(msg);
+         this.scrollToBottom();
+         if (this.activeChat) {
+           this.markMessagesAsRead();
+         }
+       });
+   
+
+  // any message that is viewed by the recipient will be accessed via the readReceiptSubscription and then the message will be marked as read.
+  this.websocketService
+    .getReadRecipts()
+    .subscribe((readReceipt: ReadReceipt) => {
+      const message = this.messages.find(
+        (msg) => msg.message_id === readReceipt.message_id
+      );
+      if (message) {
+        message.is_read = true; // mark the sender's message as read if the recipient has viewed the message.
+        this.lastMessageService.updateLatestMessage(message);
       }
     });
-
-    // any message that is viewed by the recipient will be accessed via the readReceiptSubscription and then the message will be marked as read.
-    this.websocketService
-      .getReadRecipts()
-      .subscribe((readReceipt: ReadReceipt) => {
-        const message = this.messages.find(
-          (msg) => msg.message_id === readReceipt.message_id
-        );
-        if (message) {
-          message.is_read = true; // mark the sender's message as read if the recipient has viewed the message.
-          this.lastMessageService.updateLatestMessage(message); // need to update the latest message on the contacts side bar as read. 
-        }
-      });
   }
 
   loadInitalMessages() {
@@ -201,6 +214,7 @@ export class ChatComponent implements AfterViewChecked {
     );
     unreadMessages.forEach((msg) => {
       this.websocketService.sendReadReceipt(msg.message_id, msg.sender_id); // mark the recipient (sender in this case) as read
+      msg.is_read = true; // mark message as true on frontend as well 
     });
   }
 
@@ -238,6 +252,7 @@ export class ChatComponent implements AfterViewChecked {
         timestamp: '',
         is_read: false,
         message_id: -1,
+        thread_id: this.currentThreadId,
       };
 
       this.websocketService.send(this.chatMessage);
@@ -246,5 +261,10 @@ export class ChatComponent implements AfterViewChecked {
       this.isTyping = false;
     }
     this.userMessage = '';
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

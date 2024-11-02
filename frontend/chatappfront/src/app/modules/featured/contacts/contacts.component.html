@@ -64,6 +64,7 @@
       <div class="wrap">
         <span class="contact-status online"></span>
         <img src="User Icon 1.png" alt="" />
+
         <div class="meta">
           <div class="name-and-date">
             <!-- Display the name of the recipient user in the thread -->
@@ -80,19 +81,31 @@
             is typing...
           </p>
 
-           <!-- Display the latest message preview when typingRecipient is false -->
+          <!-- Display latest message-->
           <ng-template #showLatestMessage>
             <div class="message-and-checkmark">
               <p class="preview" *ngIf="thread.messages.latest_message; else noMessages">
                 {{ thread.messages.latest_message }}
               </p>
 
-              <!-- Read Receipt Section -->
-              <div class="checkmark-container" *ngIf="thread.messages.message_sender_id === userID">
-                <p *ngIf="thread.messages.is_read; else unreadMessage">&#10003;&#10003;</p>
-                <ng-template #unreadMessage>
-                  <p>&#10003;</p>
-                </ng-template>
+              <!-- Show either read receipt or unread count -->
+              <div class="notification-container">
+                <!-- Read receipt for sent messages -->
+                <div class="checkmark-container" *ngIf="thread.messages.message_sender_id === userID">
+                  <p *ngIf="thread.messages.is_read; else unreadMessage">&#10003;&#10003;</p>
+                  <ng-template #unreadMessage>
+                    <p>&#10003;</p>
+                  </ng-template>
+                </div>
+
+                <!-- Unread badge for received messages -->
+                <div class="unread-badge" 
+                     *ngIf="thread.messages.message_sender_id === thread.recipient_id && 
+                           !thread.messages.is_read && 
+                           thread.messages.latest_message &&
+                           threadUnreadCounts[thread.id] > 0">
+                  {{ threadUnreadCounts[thread.id] > 99 ? '99+' : threadUnreadCounts[thread.id] }}
+                </div>
               </div>
             </div>
           </ng-template>
@@ -100,6 +113,7 @@
           <ng-template #noMessages>
             <p class="no-message-preview">No messages yet</p>
           </ng-template>
+        
         </div>
       </div>
     </li>

@@ -7,6 +7,8 @@ import {
   TypingStop,
   SearchCache,
   User,
+  ThreadUnreadCounts,
+  UnreadCountsMessage,
 } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
@@ -33,6 +35,7 @@ export class ContactsComponent implements OnChanges {
   threads: ThreadData[] = [];
   selectedThread: ThreadData | null = null;
   typingRecipient: { [id: number]: boolean } = {};
+  currentThreadId: number = -1;
 
   // search related properties
   searchQuery: string = '';
@@ -45,6 +48,11 @@ export class ContactsComponent implements OnChanges {
   private destroy$ = new Subject<void>();
   private searchCache: { [key: string]: SearchCache } = {};
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  // unread messages properties
+  threadUnreadCounts: ThreadUnreadCounts = {};
+  previousThreadCounts: {[key: string]: number} = {};
+  totalUnreadCount = 0;
 
   constructor(
     private http: HttpClient,
@@ -76,6 +84,12 @@ export class ContactsComponent implements OnChanges {
           this.updateMessagePreview(message);
         }
       });
+
+    // Subscribe to all messages for the contacts sidebar updates
+    this.websocketService.getMessages(null).subscribe((msg: ChatMessage) => {
+      this.lastMessageService.updateLatestMessage(msg);
+    });
+
     // check if recipient "is typing..."
     this.websocketService
       .getTypingStatus()
@@ -103,14 +117,33 @@ export class ContactsComponent implements OnChanges {
           }
         }
       });
+
+    this.websocketService.getUnreadCounts().subscribe((data) => {
+      // data.thread_counts will be a simple object like:
+      // { "1": 5, "2": 3 } where "1" and "2" are thread IDs and numbers are unread counts
+      this.totalUnreadCount = data.total_unread;
+      
+      // Get new counts
+      const newCounts = { ...data.thread_counts };
+      if (this.currentThreadId) {
+        newCounts[this.currentThreadId] = 0;
+      }
+      // Only update if counts are different
+      if (JSON.stringify(newCounts) !== JSON.stringify(this.previousThreadCounts)) {
+        this.threadUnreadCounts = newCounts;
+        this.previousThreadCounts = newCounts;
+      }
+    });
   }
 
   // api to get all the chats a user has
   getThreads(): void {
-    this.http.get('http://localhost:8000/api/threads/').subscribe((response: any) => {
-      // Sort threads by timestamp before assigning
-      this.threads = response.threads;
-    });
+    this.http
+      .get('http://localhost:8000/api/threads/')
+      .subscribe((response: any) => {
+        // Sort threads by timestamp before assigning
+        this.threads = response.threads;
+      });
   }
 
   // function to update the latest message sent in the thread on the contacts side panel to keep up with the realtime chat.
@@ -157,6 +190,38 @@ export class ContactsComponent implements OnChanges {
   selectContactForChat(sendDataToChat: ThreadData) {
     this.contactToChatService.selectChat(sendDataToChat);
     this.selectedThread = sendDataToChat;
+    this.currentThreadId = sendDataToChat.id;
+
+    // If there are unread messages in this thread, handle read status
+    if (
+      sendDataToChat.id !== undefined &&
+      sendDataToChat.messages.message_sender_id ===
+        sendDataToChat.recipient_id &&
+      !sendDataToChat.messages.is_read
+    ) {
+      // Update the thread's read status immediately in the UI
+      sendDataToChat.messages.is_read = true;
+
+      // Update the threads array to trigger change detection
+      this.threads = this.threads.map((thread) => {
+        if (thread.id === sendDataToChat.id) {
+          return {
+            ...thread,
+            messages: {
+              ...thread.messages,
+              is_read: true,
+            },
+          };
+        }
+        return thread;
+      });
+
+      // Send read receipt to backend
+      this.websocketService.sendReadReceipt(
+        sendDataToChat.messages.message_id,
+        this.userID
+      );
+    }
   }
 
   // Search related methods
@@ -207,8 +272,8 @@ export class ContactsComponent implements OnChanges {
   async selectUser(user: User) {
     if (user.thread_exists) {
       // Simply find and select the existing thread without reordering
-      const existingThread = this.threads.find(t =>
-        t.recipient_id === user.id || t.sender_id === user.id
+      const existingThread = this.threads.find(
+        (t) => t.recipient_id === user.id || t.sender_id === user.id
       );
       if (existingThread) {
         this.selectContactForChat(existingThread);
@@ -217,11 +282,12 @@ export class ContactsComponent implements OnChanges {
       try {
         const response: any = await firstValueFrom(
           this.http.post('http://localhost:8000/api/create-thread/', {
-            user_id: user.id
+            user_id: user.id,
           })
         );
-        
+
         const newThread: ThreadData = {
+          id: response.thread_id,
           sender_id: this.userID!,
           recipient_id: user.id,
           sender_username: response.sender_username,
@@ -230,10 +296,11 @@ export class ContactsComponent implements OnChanges {
             message_sender_id: null,
             latest_message: '',
             timestamp: new Date().toString(),
-            is_read: false
-          }
+            is_read: false,
+            message_id: null,
+          },
         };
-        
+
         // New threads still go to the top since they're newly created
         this.threads.unshift(newThread);
         this.selectContactForChat(newThread);

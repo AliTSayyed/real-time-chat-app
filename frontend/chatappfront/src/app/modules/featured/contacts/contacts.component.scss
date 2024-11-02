@@ -342,3 +342,57 @@
   text-align: center;
 }
 
+.message-and-checkmark {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-container {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.checkmark-container {
+  font-size: 13px;
+  color: white;
+  font-weight: 600;
+}
+
+.unread-badge {
+  background-color: #2563eb;
+  color: white;
+  border-radius: 12px;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.preview {
+  margin: 5px 0 0 0;
+  padding: 0 0 1px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  margin-right: 8px;
+}

@@ -8,6 +8,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from urllib.parse import parse_qs
 from chat.models import ChatMessage, Thread
 from datetime import datetime, timezone
+from django.db.models import Count
 
 # the consumer will handle the websocket connection that is initiated with the client
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -23,7 +24,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
     )
       
     await self.accept()
+
+    # Send initial unread counts when user connects
+    await self.send_unread_counts()
     print('connected')
+
+
+  # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
+  async def disconnect(self, close_code):
+    print('disconnected', close_code)
+    await self.channel_layer.group_discard(
+    self.chat_room,  # Leave the room
+    self.channel_name
+    )
     
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket message recieve from client event
   async def receive(self, text_data):
@@ -57,11 +70,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if message:
             message.is_read = True  # Mark the message as read
             await database_sync_to_async(message.save)()  # Save the changes
+
+       # Get updated unread count for the thread
+        thread = await self.get_thread_by_message(message_id)
       
         response = {
             'type': 'read_receipt',
             'message_id': message_id,
             'is_read': True,
+            'thread_id': thread.id,
         }
         
         await self.channel_layer.group_send( 
@@ -70,6 +87,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'type': 'read_receipt',
                 'content': response,
             })
+        
+        # Separately send updated unread counts
+        await self.notify_unread_counts(recipient_id)
 
     except ChatMessage.DoesNotExist:
         pass
@@ -92,7 +112,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # Create chat room names
     recipient_chat_room = f'user_chat_room_{recipient_id}'
 
-    # Get or create the thread between the users
+    # Get the thread between the users
     thread = await self.get_thread(sender, recipient)
 
     # Save the message to the database
@@ -101,6 +121,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # Prepare the response
     message_date = datetime.now(tz=timezone.utc).isoformat()
+
     response = {
         'type': 'chat_message',
         'message': msg,
@@ -109,20 +130,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
         'timestamp': message_date,
         'is_read': False,
         'message_id': chat_message.id,
+        'thread_id': thread.id,
     }
 
     # Send message to recipient and sender
     await self.channel_layer.group_send(recipient_chat_room, {'type': 'chat_message', 'content': response})
     await self.channel_layer.group_send(self.chat_room, {'type': 'chat_message', 'content': response})
 
+    # Also send updated total counts
+    await self.notify_unread_counts(recipient_id)
+
   async def handle_typing_start(self, data):
     sender_id = data.get('sender_id')
     recipient_id = data.get('recipient_id')
+
+    sender = await self.get_user_object(sender_id)
+    recipient = await self.get_user_object(recipient_id)
+
+    # Get the thread between the users
+    thread = await self.get_thread(sender, recipient)
 
     response = {
         'type': 'typing_start',
         'sender_id': sender_id,
         'recipient_id': recipient_id,
+        'thread_id': thread.id,
     }
 
     recipient_chat_room = f'user_chat_room_{recipient_id}'
@@ -132,35 +164,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
     sender_id = data.get('sender_id')
     recipient_id = data.get('recipient_id')
 
+    sender = await self.get_user_object(sender_id)
+    recipient = await self.get_user_object(recipient_id)
+
+    # Get the thread between the users
+    thread = await self.get_thread(sender, recipient)
+
     response = {
         'type': 'typing_stop',
         'sender_id': sender_id,
         'recipient_id': recipient_id,
+        'thread_id': thread.id,
     }
 
     recipient_chat_room = f'user_chat_room_{recipient_id}'
     await self.channel_layer.group_send(recipient_chat_room, {'type': 'typing_stop', 'content': response})
-
-  # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
-  async def disconnect(self, close_code):
-    print('disconnected', close_code)
-    await self.channel_layer.group_discard(
-    self.chat_room,  # Leave the room
-    self.channel_name
-    )
   
   # custom send chat message handler
   async def chat_message(self, event):
     content = event['content']
 
     await self.send(text_data=json.dumps({
-       'type':'chat_message',
+      'type':'chat_message',
       'message': content['message'],
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
       'timestamp':content['timestamp'],
       'is_read':content['is_read'],
       'message_id':content['message_id'],
+      'thread_id':content['thread_id'],
     }))
 
   # typing start handler
@@ -171,6 +203,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
       'type':'typing_start',
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
+      'thread_id':content['thread_id'],
     }))
   
   # typing stop handler 
@@ -181,6 +214,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
       'type':'typing_stop',
       'sender_id': content['sender_id'],
       'recipient_id':content['recipient_id'],
+      'thread_id':content['thread_id'],
     }))
   
     # read receipt handler 
@@ -191,7 +225,66 @@ class ChatConsumer(AsyncWebsocketConsumer):
       'type':'read_receipt',
       'message_id': content['message_id'],
       'is_read': content['is_read'],
+      'thread_id':content['thread_id'],
     }))
+
+  # Use this method when you need to send counts to a specific user (e.g., after marking messages as read)
+  async def notify_unread_counts(self, user_id):
+    """Notify user of updated unread counts"""
+    counts = await self.get_unread_counts(user_id)
+    await self.channel_layer.group_send(
+        f'user_chat_room_{user_id}',
+        {
+            'type': 'unread_counts',
+            'content': counts
+        }
+    )
+
+  # Handler for unread messages in realtime
+  async def unread_counts(self, event):
+    content = event['content']
+    await self.send(text_data=json.dumps({
+        'type': 'unread_counts',
+        'thread_counts': content['thread_counts'],
+        'total_unread': content['total_unread']
+    }))
+
+  # used when a user first connects to the websocket, pulls from database
+  async def send_unread_counts(self):
+    """Send initial unread counts to new connection"""
+    user_id = self.scope['user'].id
+    counts = await self.get_unread_counts(user_id)
+    
+    await self.send(text_data=json.dumps({
+        'type': 'unread_counts',
+        'thread_counts': counts['thread_counts'],
+        'total_unread': counts['total_unread']
+    }))
+  
+  @database_sync_to_async
+  def get_unread_counts(self, user_id):
+    """Get unread message counts grouped by thread"""
+    unread_messages = ChatMessage.objects.filter(
+        recipient_id=user_id,
+        is_read=False
+    ).values('thread_id').annotate(
+        count=Count('id')
+    )
+    
+    # Convert to dict of thread_id: count
+    thread_counts = {str(item['thread_id']): item['count'] for item in unread_messages}
+    total_unread = sum(thread_counts.values())
+    
+    return {
+        'type': 'unread_counts',
+        'thread_counts': thread_counts,
+        'total_unread': total_unread
+    }
+  
+  @database_sync_to_async
+  def get_thread_by_message(self, message_id):
+      """Get thread by message ID"""
+      return ChatMessage.objects.get(id=message_id).thread
 
   @database_sync_to_async
   def get_user_object(self, user_id):
@@ -212,13 +305,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
   # Save the chat message to the database
   @database_sync_to_async
   def create_chat_message(self, thread, sender, message, recipient):
-      return ChatMessage.objects.create(
-          thread=thread,
-          sender=sender,
-          message=message,
-          recipient=recipient,
-          is_read = False
-      )
+    return ChatMessage.objects.create(
+        thread=thread,
+        sender=sender,
+        message=message,
+        recipient=recipient,
+    )
+  
   # Define the synchronous method for fetching the message
   @database_sync_to_async
   def get_message(self, message_id):

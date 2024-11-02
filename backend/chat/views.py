@@ -140,6 +140,7 @@ def get_threads(request):
         last_message = thread.chatmessage_thread.all().order_by('-timestamp').first()
         
         thread_data = {
+            'id': thread.id,
             'sender_username': sender.username,
             'recipient_username': recipient.username,
             'sender_id': sender.id,
@@ -149,6 +150,7 @@ def get_threads(request):
                 'latest_message': '',
                 'timestamp': thread.timestamp,
                 'is_read': True,
+                'message_id': None  # Add default message_id
             }
         }
 
@@ -158,6 +160,7 @@ def get_threads(request):
                 'latest_message': last_message.message,
                 'timestamp': last_message.timestamp,
                 'is_read': last_message.is_read,
+                'message_id': last_message.id  # Add the message ID
             })
             threads_with_messages.append(thread_data)
         else:
