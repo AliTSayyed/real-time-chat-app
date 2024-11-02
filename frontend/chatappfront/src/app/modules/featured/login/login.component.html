@@ -1,37 +1,63 @@
-<div class="auth-container">
-  <h2>{{ isLoginMode ? 'Login' : 'Register' }}</h2>
-  
-  <form (ngSubmit)="onSubmit()">
-    <div>
-      <label for="username">Username</label>
-      <input
-        type="text"
-        id="username"
-        [(ngModel)]="username"
-        name="username"
-        required
-      />
+<div class="auth-page">
+  <div class="auth-container">
+    <!-- Header -->
+    <div class="auth-header">
+      <h2>{{ isLoginMode ? 'Welcome Back' : 'Create Account' }}</h2>
+      <p>{{ isLoginMode ? 'Sign in to continue to WhatsApp' : 'Join millions of users worldwide' }}</p>
     </div>
 
-    <div>
-      <label for="password">Password</label>
-      <input
-        type="password"
-        id="password"
-        [(ngModel)]="password"
-        name="password"
-        required
-      />
-    </div>
+    <!-- Form -->
+    <div class="auth-form-container">
+      <form (ngSubmit)="onSubmit()" #authForm="ngForm">
+        <!-- Username Input -->
+        <div class="form-group">
+          <input
+            type="text"
+            id="username"
+            name="username"
+            [(ngModel)]="username"
+            required
+            #usernameInput="ngModel"
+            [class.is-invalid]="usernameInput.invalid && usernameInput.touched"
+            placeholder="Username"
+          />
+          <div *ngIf="usernameInput.invalid && usernameInput.touched" class="error-message">
+            Username is required
+          </div>
+        </div>
 
-    <div>
-      <button type="submit">{{ isLoginMode ? 'Login' : 'Register' }}</button>
-    </div>
-  </form>
+        <!-- Password Input -->
+        <div class="form-group">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            #passwordInput="ngModel"
+            [class.is-invalid]="passwordInput.invalid && passwordInput.touched"
+            placeholder="Password"
+          />
+          <div *ngIf="passwordInput.invalid && passwordInput.touched" class="error-message">
+            Password is required
+          </div>
+        </div>
 
-  <p>
-    <button (click)="toggleMode()">
-      {{ isLoginMode ? 'Create an Account' : 'Already have an account? Login' }}
-    </button>
-  </p>
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          [disabled]="authForm.invalid || !username || !password"
+          class="submit-button">
+          {{ isLoginMode ? 'Sign In' : 'Create Account' }}
+        </button>
+      </form>
+
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button (click)="toggleMode()">
+          {{ isLoginMode ? "Don't have an account? Sign up" : 'Already have an account? Sign in' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
