@@ -7,6 +7,7 @@ import {
   TypingStart,
   TypingStop,
   UnreadCountsMessage,
+  UserStatus,
 } from '../../../../types';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
@@ -27,7 +28,8 @@ export class WebsocketService {
   private userTypingSubject = new Subject<TypingStart | TypingStop>(); // subject to monitor if there is a typing start or stop message sent.
   private readReceiptSubject = new Subject<ReadReceipt>(); // subject to monitor if a message has been read
   private unreadCountsSubject = new Subject<UnreadCountsMessage>(); // subject to monitor how many messages are unread 
-  
+  private userStatusSubject = new Subject<UserStatus>(); // subject to keep track of who is online or offline
+
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   // Connect to the server's websocket only if a user is authenticated
@@ -63,6 +65,10 @@ export class WebsocketService {
               case 'unread_counts':
                 console.log('Unread counts from backend:', data);
                 this.unreadCountsSubject.next(data);
+                break;
+              case 'user_status':
+                console.log('User status: ', data)
+                this.userStatusSubject.next(data);
                 break;
             }
           };
@@ -165,6 +171,11 @@ export class WebsocketService {
   // getter for unread counts observable
   getUnreadCounts() {
     return this.unreadCountsSubject.asObservable();
+  }
+
+  // getter for user status
+  getUserStatus(){
+    return this.userStatusSubject.asObservable();
   }
 
   // Send typing start notification

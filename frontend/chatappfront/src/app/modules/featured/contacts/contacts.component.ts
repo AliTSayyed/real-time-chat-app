@@ -9,6 +9,7 @@ import {
   User,
   ThreadUnreadCounts,
   UnreadCountsMessage,
+  UserStatus,
 } from '../../../../types';
 import { ChatService } from '../../core/services/chat.service';
 import { LastmessageService } from '../../core/services/lastmessage.service';
@@ -53,6 +54,9 @@ export class ContactsComponent implements OnChanges {
   threadUnreadCounts: ThreadUnreadCounts = {};
   previousThreadCounts: {[key: string]: number} = {};
   totalUnreadCount = 0;
+
+  // keep track of what users are online
+  userStatusMap = new Map<number, string>();  // Map userId to 'online' or 'offline'
 
   constructor(
     private http: HttpClient,
@@ -133,6 +137,11 @@ export class ContactsComponent implements OnChanges {
         this.threadUnreadCounts = newCounts;
         this.previousThreadCounts = newCounts;
       }
+    });
+
+    this.websocketService.getUserStatus().subscribe((status: UserStatus) => {
+      this.userStatusMap.set(status.user_id, status.status);
+      console.log(this.userStatusMap)
     });
   }
 
@@ -347,6 +356,16 @@ export class ContactsComponent implements OnChanges {
     if (searchContainer && !searchContainer.contains(event.target as Node)) {
       this.showDropdown = false;
     }
+  }
+
+  // Helper method to get the other user's ID from a thread
+  getOtherUserId(thread: ThreadData): number {
+    return thread.sender_id === this.userID ? thread.recipient_id : thread.sender_id;
+  }
+
+  // Helper method to check if a user is online
+  isUserOnline(userId: number): boolean {
+    return this.userStatusMap.get(userId) === 'online';
   }
 
   ngOnDestroy() {

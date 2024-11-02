@@ -12,18 +12,52 @@ from django.db.models import Count
 
 # the consumer will handle the websocket connection that is initiated with the client
 class ChatConsumer(AsyncWebsocketConsumer):
+ # Class variable to track online users
+  online_users = set()
 
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket connection event
   async def connect(self):
     user = self.scope['user']
     chat_room = f'user_chat_room_{user.id}'
     self.chat_room = chat_room
+
     await self.channel_layer.group_add(
       chat_room,
       self.channel_name
     )
-      
+
+    # Also join a general online users group
+    await self.channel_layer.group_add(
+        'online_users',
+        self.channel_name
+    )
+
+    # Add user to online users set
+    ChatConsumer.online_users.add(user.id)
+     
     await self.accept()
+
+    # Broadcast online status when connecting
+    await self.channel_layer.group_send(
+        'online_users',
+        {
+            'type': 'user_status',
+            'content': {
+                'type': 'user_status',
+                'user_id': user.id,
+                'status': 'online'
+            }
+        }
+    )
+
+    # Send the list of all currently online users to the new connection
+    for online_user_id in ChatConsumer.online_users:
+        if online_user_id != user.id:  # Don't send own status again
+            await self.send(text_data=json.dumps({
+                'type': 'user_status',
+                'user_id': online_user_id,
+                'status': 'online'
+            }))
 
     # Send initial unread counts when user connects
     await self.send_unread_counts()
@@ -32,12 +66,29 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket disconnect event
   async def disconnect(self, close_code):
-    print('disconnected', close_code)
+    # Broadcast offline status when disconnecting
+    user = self.scope['user']
+    
+    # Remove user from online users set
+    ChatConsumer.online_users.discard(user.id)
+    await self.channel_layer.group_send(
+        'online_users',
+        {
+            'type': 'user_status',
+            'content': {
+                'type': 'user_status',
+                'user_id': user.id,
+                'status': 'offline'
+            }
+        }
+    )
+
     await self.channel_layer.group_discard(
     self.chat_room,  # Leave the room
     self.channel_name
     )
-    
+    print('disconnected', close_code)
+
   # mandatory function from AsyncWebsocketConsumer that will handle the websocket message recieve from client event
   async def receive(self, text_data):
     print('received: ', text_data)
@@ -179,6 +230,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     recipient_chat_room = f'user_chat_room_{recipient_id}'
     await self.channel_layer.group_send(recipient_chat_room, {'type': 'typing_stop', 'content': response})
+
+
+ # Handler for user status updates
+  async def user_status(self, event):
+      content = event['content']
+      
+      await self.send(text_data=json.dumps({
+          'type': 'user_status',
+          'user_id': content['user_id'],
+          'status': content['status']
+      }))
   
   # custom send chat message handler
   async def chat_message(self, event):

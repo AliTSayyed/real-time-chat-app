@@ -92,10 +92,17 @@ export interface UnreadCountsMessage {
   thread_counts: ThreadUnreadCounts;
 }
 
+export interface UserStatus{
+  type: 'user_status';
+  user_id: number;
+  status: 'online' | 'offline';
+}
+
 // Union type for all possible WebSocket message types
 export type WebSocketMessage = 
   | ChatMessage 
   | TypingStart 
   | TypingStop 
   | ReadReceipt 
-  | UnreadCountsMessage;
+  | UnreadCountsMessage
+  |UserStatus;

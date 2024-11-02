@@ -62,7 +62,7 @@
       (click)="selectContactForChat(thread)"
     >
       <div class="wrap">
-        <span class="contact-status online"></span>
+        <span class="contact-status" [class.online]="isUserOnline(getOtherUserId(thread))"></span>
         <img src="User Icon 1.png" alt="" />
 
         <div class="meta">
